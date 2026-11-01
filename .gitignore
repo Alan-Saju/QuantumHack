@@ -1,0 +1,10 @@
+qiskit-env/
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.env
+osrm/data/*
+!osrm/data/.gitkeep
+data/road_network/*.json
+!data/road_network/demo.json

@@ -14,17 +14,14 @@
 </head>
 <body>
   <a class="skip-link" href="#route-form">Skip to route controls</a>
-  <header class="app-header">
-    <a class="brand" href="/" aria-label="QuantumRescue home"><span class="brand-mark" aria-hidden="true">+</span> Quantum<span>Rescue</span></a>
-    <div class="header-context">KOCHI, KERALA <span class="separator">/</span> ROUTE EXPLORER</div>
-    <span class="prototype-label">Research prototype</span>
-  </header>
   <main class="workspace">
     <aside class="sidebar" aria-label="Route planner">
-      <div class="intro"><p class="eyebrow">LOCAL ROAD NETWORK</p><h1>Plan a route.</h1><p>Choose two locations to explore the roads between them.</p></div>
+      <div class="planner-heading"><div><span class="app-name">QuantumRescue</span><h1>Where are you heading?</h1></div><button id="toggle-planner" class="icon-button" type="button" aria-label="Hide planner" aria-expanded="true" aria-controls="planner-content">−</button></div>
+      <div id="planner-content">
+      <p><a href="/assets/allocation.html">Open resource allocation →</a></p>
       <form id="route-form">
         <fieldset class="location-fieldset">
-          <legend><span class="point-label origin-label">A</span> Ambulance location</legend>
+          <legend><span class="point-label origin-label">A</span> Starting point</legend>
           <div class="coordinate-grid">
             <label for="origin-lat">Latitude<input id="origin-lat" type="number" min="-90" max="90" step="any" required value="9.9312" inputmode="decimal"></label>
             <label for="origin-lon">Longitude<input id="origin-lon" type="number" min="-180" max="180" step="any" required value="76.2673" inputmode="decimal"></label>
@@ -35,10 +32,10 @@
         </fieldset>
         <div class="swap-row"><span></span><button type="button" id="swap" class="text-button">Swap locations <span aria-hidden="true">↕</span></button></div>
         <fieldset class="location-fieldset">
-          <legend><span class="point-label destination-label">B</span> Emergency destination</legend>
+          <legend><span class="point-label destination-label">B</span> Destination</legend>
           <div class="coordinate-grid">
-            <label for="destination-lat">Latitude<input id="destination-lat" type="number" min="-90" max="90" step="any" required value="9.9500" inputmode="decimal"></label>
-            <label for="destination-lon">Longitude<input id="destination-lon" type="number" min="-180" max="180" step="any" required value="76.2900" inputmode="decimal"></label>
+            <label for="destination-lat">Latitude<input id="destination-lat" type="number" min="-90" max="90" step="any" required value="9.949162" inputmode="decimal"></label>
+            <label for="destination-lon">Longitude<input id="destination-lon" type="number" min="-180" max="180" step="any" required value="76.291069" inputmode="decimal"></label>
           </div>
           <button type="button" class="pick-button" id="pick-destination" aria-pressed="false">Set B on map</button>
         </fieldset>
@@ -46,20 +43,19 @@
       </form>
       <section class="route-results" aria-labelledby="results-heading" aria-busy="false">
         <div class="section-heading"><h2 id="results-heading">Route options</h2><span id="route-count"></span></div>
-        <p id="route-status" class="route-status" role="status" aria-live="polite">Ready when you are. Choose locations and find a route.</p>
+        <p id="route-status" class="route-status" role="status" aria-live="polite">Choose points on the map or use your location.</p>
         <div id="route-options"></div>
         <div id="route-details" hidden></div>
       </section>
-      <div class="sidebar-footer"><span class="small-dot" aria-hidden="true"></span> OSRM baseline · Traffic simulation off</div>
+      <details class="app-footer"><summary>Connection &amp; about</summary><div class="connection"><span id="connection-dot" class="connection-dot" aria-hidden="true"></span><span id="connection-status" role="status">Checking local OSRM…</span><button type="button" id="check-connection" class="text-button">Check again</button></div><p>Research prototype. Route checks do not establish emergency suitability. Traffic simulation is off.</p></details>
+      </div>
     </aside>
     <section class="map-panel" aria-label="Kochi route map">
       <div id="map" aria-label="Interactive map. Use coordinate inputs as a keyboard alternative to selecting points." tabindex="0"></div>
-      <div class="map-topbar"><div class="map-title"><span class="small-dot" aria-hidden="true"></span> Kochi road network</div><button id="fit-map" class="map-button" type="button">Fit route</button></div>
+      <div class="map-topbar"><button id="fit-map" class="map-button" type="button" title="Show all route points">Fit route <span aria-hidden="true">⤢</span></button></div>
       <p id="map-instruction" class="map-instruction">Click the map to place A · ambulance location</p>
       <p id="tile-status" class="tile-status" role="status" hidden></p>
-      <div class="map-legend" aria-label="Route legend"><span><i class="legend-line"></i>Selected</span><span><i class="legend-line alternative-line"></i>Alternative</span><span><i class="legend-line rejected-line"></i>Rejected</span></div>
     </section>
   </main>
-  <footer class="app-footer"><div class="connection"><span id="connection-dot" class="connection-dot" aria-hidden="true"></span><span id="connection-status" role="status">Checking local OSRM…</span><button type="button" id="check-connection" class="text-button">Check again</button></div><p>For research only. Route checks do not establish emergency suitability.</p></footer>
 </body>
 </html>

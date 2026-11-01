@@ -34,14 +34,294 @@
         "title": "APIError",
         "type": "object"
       },
-      "Ambulance": {
+      "AllocationRequest-Input": {
         "additionalProperties": false,
         "properties": {
-          "height_m": {
-            "default": 2.8,
-            "exclusiveMinimum": 0.0,
-            "title": "Height M",
+          "ambulances": {
+            "items": {
+              "$ref": "#/components/schemas/backend__allocation__scenario__Ambulance"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Ambulances",
+            "type": "array"
+          },
+          "hospitals": {
+            "items": {
+              "$ref": "#/components/schemas/Hospital"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Hospitals",
+            "type": "array"
+          },
+          "incidents": {
+            "items": {
+              "$ref": "#/components/schemas/Incident"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Incidents",
+            "type": "array"
+          },
+          "solver": {
+            "$ref": "#/components/schemas/SolverOptions"
+          },
+          "transport_weight": {
+            "default": 1,
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Transport Weight",
             "type": "number"
+          },
+          "travel_source": {
+            "default": "synthetic",
+            "enum": [
+              "synthetic",
+              "osrm"
+            ],
+            "title": "Travel Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ambulances",
+          "hospitals",
+          "incidents"
+        ],
+        "title": "AllocationRequest",
+        "type": "object"
+      },
+      "AllocationRequest-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "ambulances": {
+            "items": {
+              "$ref": "#/components/schemas/Ambulance-Output"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Ambulances",
+            "type": "array"
+          },
+          "hospitals": {
+            "items": {
+              "$ref": "#/components/schemas/Hospital"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Hospitals",
+            "type": "array"
+          },
+          "incidents": {
+            "items": {
+              "$ref": "#/components/schemas/Incident"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Incidents",
+            "type": "array"
+          },
+          "solver": {
+            "$ref": "#/components/schemas/SolverOptions"
+          },
+          "transport_weight": {
+            "default": 1,
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Transport Weight",
+            "type": "number"
+          },
+          "travel_source": {
+            "default": "synthetic",
+            "enum": [
+              "synthetic",
+              "osrm"
+            ],
+            "title": "Travel Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ambulances",
+          "hospitals",
+          "incidents"
+        ],
+        "title": "AllocationRequest",
+        "type": "object"
+      },
+      "AllocationResult": {
+        "additionalProperties": false,
+        "properties": {
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "title": "Assignments",
+            "type": "array"
+          },
+          "exact_assignments": {
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "title": "Exact Assignments",
+            "type": "array"
+          },
+          "exact_objective": {
+            "title": "Exact Objective",
+            "type": "number"
+          },
+          "exact_runtime_ms": {
+            "title": "Exact Runtime Ms",
+            "type": "number"
+          },
+          "full_choice_count": {
+            "title": "Full Choice Count",
+            "type": "integer"
+          },
+          "objective": {
+            "title": "Objective",
+            "type": "number"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "number"
+          },
+          "penalty": {
+            "title": "Penalty",
+            "type": "number"
+          },
+          "qaoa_gap_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qaoa Gap Percent"
+          },
+          "quantum": {
+            "$ref": "#/components/schemas/QuantumResult"
+          },
+          "qubit_count": {
+            "title": "Qubit Count",
+            "type": "integer"
+          },
+          "qubo": {
+            "items": {
+              "$ref": "#/components/schemas/QuboTerm"
+            },
+            "title": "Qubo",
+            "type": "array"
+          },
+          "reduced_exact_objective": {
+            "title": "Reduced Exact Objective",
+            "type": "number"
+          },
+          "selected_solver": {
+            "enum": [
+              "exact",
+              "qaoa"
+            ],
+            "title": "Selected Solver",
+            "type": "string"
+          },
+          "selection_reason": {
+            "title": "Selection Reason",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "partial"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "travel_source": {
+            "enum": [
+              "synthetic",
+              "osrm"
+            ],
+            "title": "Travel Source",
+            "type": "string"
+          },
+          "unserved": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unserved",
+            "type": "array"
+          },
+          "variables": {
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "title": "Variables",
+            "type": "array"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "travel_source",
+          "status",
+          "selected_solver",
+          "selection_reason",
+          "assignments",
+          "unserved",
+          "objective",
+          "exact_objective",
+          "reduced_exact_objective",
+          "exact_assignments",
+          "exact_runtime_ms",
+          "quantum",
+          "qaoa_gap_percent",
+          "variables",
+          "full_choice_count",
+          "qubit_count",
+          "qubo",
+          "offset",
+          "penalty"
+        ],
+        "title": "AllocationResult",
+        "type": "object"
+      },
+      "Ambulance-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "default": true,
+            "title": "Available",
+            "type": "boolean"
+          },
+          "capabilities": {
+            "items": {
+              "enum": [
+                "general",
+                "cardiac",
+                "trauma"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "id": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Id",
+            "type": "string"
           },
           "latitude": {
             "maximum": 90.0,
@@ -55,22 +335,19 @@
             "title": "Longitude",
             "type": "number"
           },
-          "weight_t": {
-            "default": 3.5,
-            "exclusiveMinimum": 0.0,
-            "title": "Weight T",
-            "type": "number"
-          },
-          "width_m": {
-            "default": 2.4,
-            "exclusiveMinimum": 0.0,
-            "title": "Width M",
-            "type": "number"
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
           }
         },
         "required": [
           "latitude",
-          "longitude"
+          "longitude",
+          "id",
+          "name",
+          "capabilities"
         ],
         "title": "Ambulance",
         "type": "object"
@@ -96,6 +373,65 @@
           "segment_ids"
         ],
         "title": "BlockRequest",
+        "type": "object"
+      },
+      "Choice": {
+        "additionalProperties": false,
+        "properties": {
+          "ambulance_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ambulance Id"
+          },
+          "cost": {
+            "title": "Cost",
+            "type": "number"
+          },
+          "hospital_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hospital Id"
+          },
+          "incident_id": {
+            "title": "Incident Id",
+            "type": "string"
+          },
+          "legs": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Geometry"
+            },
+            "title": "Legs",
+            "type": "array"
+          },
+          "response_minutes": {
+            "default": 0,
+            "title": "Response Minutes",
+            "type": "number"
+          },
+          "transport_minutes": {
+            "default": 0,
+            "title": "Transport Minutes",
+            "type": "number"
+          }
+        },
+        "required": [
+          "incident_id",
+          "cost"
+        ],
+        "title": "Choice",
         "type": "object"
       },
       "Cost": {
@@ -209,6 +545,121 @@
         "title": "HealthResult",
         "type": "object"
       },
+      "Hospital": {
+        "additionalProperties": false,
+        "properties": {
+          "available_slots": {
+            "default": 1,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Available Slots",
+            "type": "integer"
+          },
+          "capabilities": {
+            "items": {
+              "enum": [
+                "general",
+                "cardiac",
+                "trauma"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "id": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "id",
+          "name",
+          "capabilities"
+        ],
+        "title": "Hospital",
+        "type": "object"
+      },
+      "Incident": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "requires": {
+            "enum": [
+              "general",
+              "cardiac",
+              "trauma"
+            ],
+            "title": "Requires",
+            "type": "string"
+          },
+          "severity": {
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Severity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "id",
+          "name",
+          "severity",
+          "requires"
+        ],
+        "title": "Incident",
+        "type": "object"
+      },
       "Location": {
         "additionalProperties": false,
         "properties": {
@@ -277,6 +728,125 @@
           }
         },
         "title": "OptimizationOptions",
+        "type": "object"
+      },
+      "QuantumResult": {
+        "additionalProperties": false,
+        "properties": {
+          "assignments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Choice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignments"
+          },
+          "circuit_depth": {
+            "default": 0,
+            "title": "Circuit Depth",
+            "type": "integer"
+          },
+          "evaluations": {
+            "default": 0,
+            "title": "Evaluations",
+            "type": "integer"
+          },
+          "expectation_trace": {
+            "default": [],
+            "items": {
+              "type": "number"
+            },
+            "title": "Expectation Trace",
+            "type": "array"
+          },
+          "feasible_probability": {
+            "default": 0,
+            "title": "Feasible Probability",
+            "type": "number"
+          },
+          "feasible_sample_fraction": {
+            "default": 0,
+            "title": "Feasible Sample Fraction",
+            "type": "number"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "objective": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective"
+          },
+          "optimizer_message": {
+            "default": "",
+            "title": "Optimizer Message",
+            "type": "string"
+          },
+          "parameters": {
+            "default": [],
+            "items": {
+              "type": "number"
+            },
+            "title": "Parameters",
+            "type": "array"
+          },
+          "runtime_ms": {
+            "default": 0,
+            "title": "Runtime Ms",
+            "type": "number"
+          },
+          "shots": {
+            "default": 0,
+            "title": "Shots",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "QuantumResult",
+        "type": "object"
+      },
+      "QuboTerm": {
+        "additionalProperties": false,
+        "properties": {
+          "i": {
+            "title": "I",
+            "type": "integer"
+          },
+          "j": {
+            "title": "J",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "i",
+          "j",
+          "value"
+        ],
+        "title": "QuboTerm",
         "type": "object"
       },
       "ReadinessResult": {
@@ -399,7 +969,7 @@
         "additionalProperties": false,
         "properties": {
           "ambulance": {
-            "$ref": "#/components/schemas/Ambulance"
+            "$ref": "#/components/schemas/backend__models__route__Ambulance"
           },
           "emergency": {
             "$ref": "#/components/schemas/Location"
@@ -635,6 +1205,50 @@
         "title": "ScoredSegment",
         "type": "object"
       },
+      "SolverOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "algorithm": {
+            "default": "exact",
+            "enum": [
+              "exact",
+              "qaoa"
+            ],
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "maxiter": {
+            "default": 30,
+            "maximum": 100.0,
+            "minimum": 10.0,
+            "title": "Maxiter",
+            "type": "integer"
+          },
+          "reps": {
+            "default": 1,
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Reps",
+            "type": "integer"
+          },
+          "seed": {
+            "default": 42,
+            "maximum": 4294967295.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "shots": {
+            "default": 1024,
+            "maximum": 8192.0,
+            "minimum": 64.0,
+            "title": "Shots",
+            "type": "integer"
+          }
+        },
+        "title": "SolverOptions",
+        "type": "object"
+      },
       "Weights": {
         "additionalProperties": false,
         "properties": {
@@ -665,16 +1279,207 @@
         },
         "title": "Weights",
         "type": "object"
+      },
+      "backend__allocation__scenario__Ambulance": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "default": true,
+            "title": "Available",
+            "type": "boolean"
+          },
+          "capabilities": {
+            "items": {
+              "enum": [
+                "general",
+                "cardiac",
+                "trauma"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "id": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "id",
+          "name",
+          "capabilities"
+        ],
+        "title": "Ambulance",
+        "type": "object"
+      },
+      "backend__models__route__Ambulance": {
+        "additionalProperties": false,
+        "properties": {
+          "height_m": {
+            "default": 2.8,
+            "exclusiveMinimum": 0.0,
+            "title": "Height M",
+            "type": "number"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "weight_t": {
+            "default": 3.5,
+            "exclusiveMinimum": 0.0,
+            "title": "Weight T",
+            "type": "number"
+          },
+          "width_m": {
+            "default": 2.4,
+            "exclusiveMinimum": 0.0,
+            "title": "Width M",
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "title": "Ambulance",
+        "type": "object"
       }
     }
   },
   "info": {
-    "description": "Phases 1–3. Simulated traffic and classical candidate ranking. Research use only.",
+    "description": "Joint emergency resource allocation with QUBO, local QAOA and an exact baseline. Research use only.",
     "title": "QuantumRescue",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/allocation/demo": {
+      "get": {
+        "operationId": "allocation_demo_api_allocation_demo_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "hospital_count",
+            "required": false,
+            "schema": {
+              "default": "3",
+              "enum": [
+                "3",
+                "5"
+              ],
+              "title": "Hospital Count",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocationRequest-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Allocation Demo"
+      }
+    },
+    "/api/allocation/optimize": {
+      "post": {
+        "operationId": "allocation_optimize_api_allocation_optimize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllocationRequest-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid route request"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "OSRM or configured road data is unavailable"
+          }
+        },
+        "summary": "Allocation Optimize"
+      }
+    },
     "/api/emergency/block-road": {
       "post": {
         "operationId": "block_road_api_emergency_block_road_post",

@@ -1,17 +1,68 @@
 # QuantumRescue
 
-Research prototype for ambulance route comparison in Kochi. OSRM supplies road-network routes; Python scores alternatives using road attributes, deterministic simulated congestion, and vehicle constraints.
+Research prototype for **joint emergency resource allocation** in Kochi. Allocate
+ambulances to incidents and hospital receiving slots with a QUBO model, local
+Qiskit QAOA simulation, and an exact classical comparison. OSRM supplies road
+travel inputs when selected; resource contention and capabilities determine the
+overall dispatch plan.
 
 Two developers can use the shared baseline and task branches described in
 [CONTRIBUTING.md](CONTRIBUTING.md). The generated [API contract and fixtures](contracts/README.md)
 define the common interface. Frontend mock/live runners, independent backend tests,
 and pull-request checks are implemented; see the setup paths below.
 
-The backend and interactive Leaflet map are implemented. The revised [implementation plan](QuantumRescue_Implementation_Plan.md) prioritizes **local OSRM and the map as the first milestone**. The Kochi basemap loads, and browser tests verify route drawing and interactions with mocked routing responses. Real local-OSRM routes still require Docker and map preparation on the host. Further scoring integration and quantum optimization follow live verification of that first milestone.
+The [implementation plan](QuantumRescue_Implementation_Plan.md) now prioritizes
+allocation and QUBO/QAOA. The default workspace plots **3 hospitals, 3 ambulances,
+and 3 incidents**. Change resource availability, incident severity, travel source,
+QAOA layers, evaluations, shots and seed. The original route inspector is at `/routes`.
+
+### Run the allocation demo
+
+```powershell
+.\qiskit-env\Scripts\python.exe -m pip install -r requirements.txt
+.\qiskit-env\Scripts\python.exe -m pip install -r requirements-quantum.txt
+npm.cmd --prefix frontend ci --ignore-scripts
+npm.cmd --prefix frontend run build
+.\qiskit-env\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+Open `http://127.0.0.1:8000/` and click **Optimize allocation**. No IBM account or
+quantum hardware is needed. Without quantum extras the app reports an explicit
+classical fallback. Synthetic mode needs no Docker; it draws labelled straight
+connectors and estimates travel at 30 km/h. Background tiles need internet. Live
+OSRM mode requires the existing local routing setup below and never silently
+substitutes synthetic travel.
+
+`GET /api/allocation/demo` returns the editable scenario;
+`POST /api/allocation/optimize` accepts it and returns the selected plan, full exact
+and reduced exact objectives, raw QAOA sampled plan, model coefficients and
+runtime/feasibility evidence. The quantum model keeps at most three served choices
+plus unserved per incident (12 qubits maximum), so shortlisting can exclude the
+full optimum. The exact solver searches all compatible choices and is used when
+the quantum sample is unavailable, invalid or worse. **No quantum advantage is claimed.**
+
+This first version models one receiving slot per hospital, one dispatch per
+ambulance, and capability requirements (`general`, `cardiac`, `trauma`). Hospital
+slot availability is 0 or 1. Multi-bed capacities and multi-round scheduling are
+planned extensions. All resource data and severity policy are synthetic; this is
+not an operational dispatch service. The model and formula are documented in the
+implementation plan.
+
+To prepare your own demo, choose A1–A3 or I1–I3 in **Place on map**, then click
+the map for each location. The selection advances after each placement. Drag
+ambulance and incident markers or edit their latitude/longitude inputs to adjust
+them. Select **3 or 5 fixed hospital sites**; their positions stay fixed, and
+switching the hospital network preserves your manual resource locations. Set
+incident type/severity and resource/receiving-slot availability, then optimize.
+
+If the allocator reports missing endpoints, an older backend is still running.
+Restart it with `.\scripts\start.ps1` and reload the page. The launcher now
+reloads backend code automatically; use `-NoReload` to disable that behavior.
+The demo endpoint also accepts `?hospital_count=3` or `?hospital_count=5`.
 
 ## Quick start
 
-For frontend work without Python or Docker:
+For independent work on the original route inspector without Python or Docker:
 
 ```powershell
 npm.cmd --prefix frontend ci --ignore-scripts
@@ -24,6 +75,9 @@ or `service-failure` to select a scenario. Basemap tiles require internet.
 For live forwarding, use `npm.cmd --prefix frontend run dev`; optional
 `PORT` and `BACKEND_TARGET` select the frontend port and local backend origin.
 Defaults are 5173 and `http://127.0.0.1:8000`. Live failures never use fixtures.
+The live runner opens allocation at `/`; `/routes` opens the route inspector.
+The Node-only mock runner retains the original fixed route fixtures and does not
+simulate the allocation API. Use the real backend for allocation development.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for independent setup and handoff steps.
 
 Backend-only checks need no npm install or frontend build:
@@ -76,6 +130,14 @@ For later runs, use `.\scripts\start.ps1`; it picks up the generated index autom
 
 ### Basemap and connectivity
 
+The map fills the window. Route controls sit in a floating panel (a bottom
+panel on phones); use its minus/plus button to hide or show the controls.
+Click the map to place the selected point, or click an existing marker to
+zoom into that location. Coordinate changes and device location also focus
+the selected area. **Fit route** restores the complete overview, keeping
+route points clear of the panel. Connection details and prototype information
+are available under **Connection & about**.
+
 Use **Use my location** below the starting coordinates to fill point A from
 your device. Approve the browser's location prompt; the marker moves and an
 existing route recalculates. The displayed accuracy is approximate, especially
@@ -112,7 +174,7 @@ Browser tests use an isolated headless Edge session, mock routing responses and 
 
 Alternatively, `.\osrm\prepare.ps1 -DownloadKerala` (or `-DownloadMap`) downloads the **Southern Zone extract, including Kerala**, from [Geofabrik](https://download.geofabrik.de/asia/india/southern-zone.html) before preprocessing. The download is approximately 533 MB. A small Kochi extract is preferable for memory and preparation time. Downloads and generated OSRM files are ignored by Git. The extract's OpenStreetMap/ODbL attribution and licensing requirements still apply.
 
-The script stops on failure, then runs `extract → partition → customize → routed` using the pinned `osrm/osrm-backend:v5.27.1` image. The Lua profile inherits OSRM's standard car profile and sets left-hand driving for Kochi; it grants no emergency exemptions. Profile changes require reprocessing. The service binds only to `127.0.0.1:5000`.
+The script first pulls the pinned `ghcr.io/project-osrm/osrm-backend:v5.27.1` image from OSRM's official GitHub Container Registry, then runs `extract → partition → customize → routed`, stopping on failure. The preparation script and Compose service use the same image version. An existing `osrm/data/map.osm.pbf` is reused, so retrying setup does not download it again. The Lua profile inherits OSRM's standard car profile and sets left-hand driving for Kochi; it grants no emergency exemptions. Profile changes require reprocessing. The service binds only to `127.0.0.1:5000`.
 
 Build the attribute index, then check all three OSRM services:
 
@@ -122,6 +184,8 @@ Build the attribute index, then check all three OSRM services:
 ```
 
 The check exercises Route, Nearest and Table with Kochi coordinates. OSRM may return only one route even when alternatives are requested. The supplied coordinates may need adjustment to the coverage of your extract. Snapping is capped at 100 m in route requests.
+
+The default destination is a verified road location at latitude `9.949162`, longitude `76.291069`. If OSRM returns `NoSegment`, a location is outside the 100 m snapping radius or extract coverage; the API reports `LOCATION_NOT_ROUTABLE` (422), not a service outage. Move the point closer to a routable road. The previous example at `9.95, 76.29` was approximately 149 m from the nearest routable segment in the local Southern Zone graph.
 
 Stop OSRM with:
 

@@ -29,11 +29,15 @@ function result(body) {
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = [];
+  let tileZooms = [];
   page.on('pageerror', error => errors.push(error.message));
   // Deterministic tile response; no scraping or dependency on public tile availability.
-  await page.route('https://tile.openstreetmap.org/**', route => route.fulfill({
+  await page.route('https://tile.openstreetmap.org/**', route => {
+    tileZooms.push(Number(new URL(route.request().url()).pathname.split('/')[1]));
+    return route.fulfill({
     contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aO1sAAAAASUVORK5CYII=', 'base64'),
-  }));
+    });
+  });
   await page.route('**/api/readiness', route => route.fulfill({ json: { osrm: 'available', road_attributes: 'loaded' } }));
   await page.route('**/api/emergency/route', async route => {
     requestCount++;
@@ -45,13 +49,30 @@ try {
     if (mode === 'empty') return route.fulfill({ json: fixtures['no-route'].response });
     await route.fulfill({ json: result(lastBody) });
   });
-  await page.goto(url);
+  await page.goto(`${url}/routes`);
+  assert.equal(await page.locator('header.app-header').count(), 0, 'The map has no page header');
+  assert.ok((await page.locator('#map').boundingBox()).height >= 990, 'Map fills the viewport');
+  await page.getByRole('button', { name: 'Hide planner' }).click();
+  assert.equal(await page.locator('#planner-content').isVisible(), false);
+  await page.getByRole('button', { name: 'Show planner' }).click();
+  await page.getByText('Connection & about', { exact: true }).click();
   for (const asset of ['/assets/app.js', '/assets/vendor/leaflet/leaflet.js', '/assets/styles.css']) {
     const response = await page.request.get(url + asset);
     assert.equal(response.status(), 200, `Built asset ${asset}`);
   }
   await page.getByText('OSRM connected · road attributes loaded').waitFor();
   assert.equal(await page.locator('.leaflet-marker-icon').count(), 2);
+  for (let index = 0; index < 3; index++) {
+    await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+    await page.waitForTimeout(300);
+  }
+  tileZooms = [];
+  const initialOrigin = await page.locator('#origin-lat').inputValue();
+  await page.locator('.leaflet-marker-icon.origin').click();
+  await page.waitForTimeout(200);
+  assert.ok(tileZooms.some(zoom => zoom >= 16), 'Clicking a location zooms into street detail');
+  assert.equal(await page.locator('#origin-lat').inputValue(), initialOrigin, 'Inspecting a marker does not move it');
+  await page.getByRole('button', { name: 'Fit route' }).click();
   await page.getByRole('button', { name: 'Find routes' }).click();
   await page.locator('.route-option').first().waitFor();
   assert.equal(await page.locator('.route-option').count(), 2);
@@ -113,15 +134,21 @@ try {
   await page.getByRole('button', { name: 'Find routes' }).click();
   await page.locator('.route-option').first().waitFor();
 
+  await page.getByRole('button', { name: 'Fit route' }).click();
   for (const width of [320, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.waitForTimeout(150);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, `No horizontal overflow at ${width}px`);
     const bounds = await page.locator('#map').boundingBox();
+    const planner = await page.locator('.sidebar').boundingBox();
+    assert.ok(bounds.height >= 990, 'Map remains full height at every viewport');
+    if (width < 768) assert.ok(planner.height <= bounds.height * .45, 'Mobile planner leaves most of the map free');
     for (const marker of await page.locator('.leaflet-marker-icon').all()) {
       const point = await marker.boundingBox();
       assert.ok(point.x >= bounds.x && point.x + point.width <= bounds.x + bounds.width,
         `Endpoint remains visible after resizing to ${width}px`);
+      assert.ok(width < 768 ? point.y + point.height < planner.y : point.x > planner.x + planner.width,
+        `Route overview keeps markers clear of the planner at ${width}px`);
     }
     await page.screenshot({ path: new URL(`map-${width}.png`, output).pathname.replace(/^\/([A-Za-z]:)/, '$1'), fullPage: true });
   }

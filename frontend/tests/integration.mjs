@@ -25,7 +25,7 @@ try {
       if (match) { clearTimeout(timer); resolve(match[1]); }
     });
   });
-  for (const script of ['browser.mjs', 'mock-browser.mjs', 'gps-browser.mjs']) {
+  for (const script of ['browser.mjs', 'mock-browser.mjs', 'gps-browser.mjs', 'allocation-browser.mjs']) {
     await new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [fileURLToPath(new URL(script, import.meta.url))], {
         cwd: root, windowsHide: true, stdio: 'inherit', env: { ...process.env, APP_URL: url },

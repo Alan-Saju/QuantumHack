@@ -44,3 +44,29 @@ publication, human review or live Docker/data verification.
 - [ ] Review and combine changes from two independent branches.
 - [ ] All automated checks pass after integration.
 - [ ] Verify actual local OSRM and the combined map when Docker/data are ready.
+
+## Resource allocation pivot — 1 November 2026
+
+- [x] Replace shortest-route priority with joint dispatch specification and configuration.
+- [x] Add typed three-hospital, three-ambulance, three-incident demo and availability controls.
+- [x] Implement full exact baseline and upper-triangular QUBO with resource conflicts.
+- [x] Convert QUBO to Ising and run genuine local Qiskit QAOA with seeded sampling.
+- [x] Expose reduced/full objectives, samples, feasible probability, trace and fallback reason.
+- [x] Add default allocation workspace; retain route inspector at `/routes`.
+- [x] Verify synthetic and mocked live OSRM travel, shortages, severity priority and API budgets.
+- [x] Complete allocation browser verification and final review.
+- [x] Enable click, drag and coordinate placement for all three ambulances and incidents.
+- [x] Support three or five fixed hospital sites and preserve manual locations on network changes.
+- [x] Diagnose the stale backend on port 8000, refresh it and verify actual allocation endpoints.
+- [x] Add a missing-endpoint message and backend auto-reload in the local launcher.
+- [ ] Verify real OSRM allocation against the prepared Kochi road extract.
+- [ ] Extend to arbitrary hospital capacities, route alternatives and multi-round scheduling.
+
+## Dashboard and map UI
+
+- [x] Replace the long desktop form with an independently scrolling scenario rail.
+- [x] Keep allocation actions visible on desktop and mobile.
+- [x] Add live resource totals, grouped controls and advanced solver disclosure.
+- [x] Add resource icons, quick placement selection and explicit map exploration.
+- [x] Add map inspection for individual allocation decisions.
+- [x] Verify keyboard controls, offline tiles and 320/768/1024/1440px layouts.

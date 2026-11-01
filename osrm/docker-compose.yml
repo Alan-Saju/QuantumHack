@@ -1,6 +1,6 @@
 services:
   osrm:
-    image: osrm/osrm-backend:v5.27.1
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
     command: osrm-routed --algorithm mld /data/map.osrm
     ports:
       - "127.0.0.1:5000:5000"

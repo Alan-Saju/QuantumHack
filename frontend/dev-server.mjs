@@ -67,7 +67,8 @@ export async function startDevServer({ mode = 'live', scenario = 'success', port
       if (!['GET', 'HEAD'].includes(req.method)) return json(res, 405, { error: { code: 'METHOD_NOT_ALLOWED', message: 'Use GET or HEAD.' } });
       let base = assets;
       let relative;
-      if (pathname === '/') relative = 'index.html';
+      if (pathname === '/') relative = mode === 'mock' ? 'index.html' : 'allocation.html';
+      else if (pathname === '/routes') relative = 'index.html';
       else if (pathname.startsWith('/assets/vendor/leaflet/')) { base = vendor; relative = pathname.slice('/assets/vendor/leaflet/'.length); }
       else if (pathname.startsWith('/assets/')) relative = pathname.slice('/assets/'.length);
       else return json(res, 404, { error: { code: 'NOT_FOUND', message: 'File not found.' } });

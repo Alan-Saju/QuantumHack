@@ -23,6 +23,7 @@ jobs:
           python-version: '3.14'
           cache: pip
       - run: python -m pip install --only-binary=:all: -r requirements.txt
+      - run: python -m pip install --only-binary=:all: -r requirements-quantum.txt
       - name: Test without frontend dependencies or build output
         run: |
           test ! -d frontend/node_modules
@@ -71,6 +72,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: python -m pip install --only-binary=:all: -r requirements.txt
       - run: npm --prefix frontend ci --ignore-scripts
+      - run: python -m pip install --only-binary=:all: -r requirements-quantum.txt
       - run: npm --prefix frontend run build
       - name: Install the pinned Playwright browser
         working-directory: frontend

@@ -1,6 +1,6 @@
 {
   "ambulance": {"latitude": 9.9312, "longitude": 76.2673, "width_m": 2.4, "height_m": 2.8, "weight_t": 3.5},
-  "emergency": {"latitude": 9.95, "longitude": 76.29},
+  "emergency": {"latitude": 9.949162, "longitude": 76.291069},
   "optimization": {"algorithm": "classical", "consider_traffic": true, "consider_road_width": true, "consider_risk": true},
   "scenario": {"seed": 42, "overrides": {}},
   "require_known_width": false

@@ -126,6 +126,8 @@ async function findRoutes() {
       }
       throw new Error(failure?.error?.code === 'ROAD_INDEX_UNAVAILABLE'
         ? 'Road attributes could not be loaded. Rebuild the road index and restart the app.'
+        : failure?.error?.code === 'LOCATION_NOT_ROUTABLE'
+        ? 'No routable road within 100 m of a location. Move the points closer to a road within your map extract.'
         : routeError(response.status));
     }
     const result = await response.json();
@@ -154,6 +156,7 @@ function movePoint(prefix, coordinates) {
   invalidate();
   updateMarkers();
   pick(prefix === 'origin' ? 'destination' : 'origin');
+  mapView?.focus(coordinates);
   if (hasRequested) findRoutes();
 }
 
@@ -182,7 +185,6 @@ async function useLocation() {
     const { latitude, longitude, accuracy } = position.coords;
     buildRequest([latitude, longitude], [latitude, longitude]);
     movePoint('origin', [latitude, longitude]);
-    mapView?.fit();
     message.textContent = Number.isFinite(accuracy) && accuracy >= 0
       ? `Starting point updated. Approximate accuracy: ${Math.round(accuracy)} m.`
       : 'Starting point updated. Check the marker before finding a route.';
@@ -231,7 +233,11 @@ async function checkConnection() {
 form.addEventListener('submit', event => { event.preventDefault(); findRoutes(); });
 for (const input of fields) {
   input.addEventListener('input', () => { invalidate(); updateMarkers(); });
-  input.addEventListener('change', () => { if (hasRequested && form.checkValidity()) findRoutes(); });
+  input.addEventListener('change', () => {
+    const location = point(input.id.startsWith('origin') ? 'origin' : 'destination');
+    if (location) mapView?.focus(location);
+    if (hasRequested && form.checkValidity()) findRoutes();
+  });
 }
 for (const prefix of ['origin', 'destination']) $(`#pick-${prefix}`).addEventListener('click', () => pick(prefix));
 $('#swap').addEventListener('click', () => {
@@ -245,6 +251,14 @@ $('#swap').addEventListener('click', () => {
 $('#fit-map').addEventListener('click', () => mapView?.fit());
 $('#check-connection').addEventListener('click', checkConnection);
 $('#use-location').addEventListener('click', useLocation);
+$('#toggle-planner').addEventListener('click', () => {
+  const button = $('#toggle-planner');
+  const content = $('#planner-content');
+  content.hidden = !content.hidden;
+  button.setAttribute('aria-expanded', String(!content.hidden));
+  button.setAttribute('aria-label', content.hidden ? 'Show planner' : 'Hide planner');
+  button.textContent = content.hidden ? '+' : '−';
+});
 
 try {
   const response = await fetch('/api/map-config');

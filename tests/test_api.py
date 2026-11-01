@@ -77,3 +77,52 @@ def test_invalid_upstream_data(data):
     with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200, json=data))) as http:
         with pytest.raises(OSRMError):
             OSRMClient(http).routes(point, point)
+
+
+def test_map_config_and_frontend_assets(api):
+    config = api.get('/api/map-config')
+    assert config.status_code == 200
+    assert config.json()['tile_url'].startswith('https://tile.openstreetmap.org/')
+    home = api.get('/')
+    assert home.status_code == 200
+    assert 'id="map"' in home.text
+    assert api.get('/assets/app.js').status_code == 200
+    assert api.get('/assets/vendor/leaflet/leaflet.js').status_code == 200
+    assert api.get('/api/emergency/route').status_code == 405
+
+
+def test_readiness_is_not_process_health(api):
+    class Probe:
+        def nearest(self, point):
+            return {"code": "Ok", "waypoints": [{"location": [76.2673, 9.9312]}]}
+    app.dependency_overrides[get_osrm] = Probe
+    result = api.get('/api/readiness')
+    assert result.status_code == 200
+    assert result.json()['osrm'] == 'available'
+    class Missing:
+        def nearest(self, point):
+            raise OSRMError('missing')
+    app.dependency_overrides[get_osrm] = Missing
+    assert api.get('/api/readiness').json()['osrm'] == 'unavailable'
+
+
+def test_readiness_rejects_malformed_probe(api):
+    class Probe:
+        def nearest(self, point):
+            return {"code": "Ok", "waypoints": []}
+    app.dependency_overrides[get_osrm] = Probe
+    assert api.get('/api/readiness').json()['osrm'] == 'unavailable'
+
+
+def test_unbuilt_frontend_has_setup_instructions(api, monkeypatch, tmp_path):
+    monkeypatch.setattr('backend.main.FRONTEND_DIST', tmp_path)
+    response = api.get('/')
+    assert response.status_code == 503
+    assert 'Build the map frontend' in response.text
+
+
+def test_invalid_tile_configuration_is_rejected(api, monkeypatch):
+    monkeypatch.setenv('MAP_TILE_URL', 'javascript:alert(1)')
+    response = api.get('/api/map-config')
+    assert response.status_code == 503
+    assert response.json()['error']['code'] == 'MAP_CONFIG_INVALID'

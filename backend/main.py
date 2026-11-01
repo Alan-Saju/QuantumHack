@@ -1,27 +1,38 @@
 """Local, stateless research API. Run bound to loopback only."""
 import os
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 
 from backend.intelligence.road_analyzer import RoadIndex
-from backend.models.route import Model, RouteRequest, RouteResult
+from backend.models.route import Location, Model, RouteRequest, RouteResult
 from backend.optimization.classical_optimizer import optimize
 from backend.osrm.client import OSRMClient, OSRMError
 
 app = FastAPI(title="QuantumRescue", version="0.1.0",
               description="Phases 1–3. Simulated traffic and classical candidate ranking. Research use only.")
+FRONTEND_DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
+
+
+class RoadConfigurationError(Exception):
+    """Configured road data cannot be loaded."""
 
 
 @lru_cache
 def get_roads() -> RoadIndex:
     path = os.environ.get("ROAD_INDEX_PATH")
-    return RoadIndex.load(path) if path else RoadIndex({})
+    try:
+        return RoadIndex.load(path) if path else RoadIndex({})
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise RoadConfigurationError("Road attribute index is invalid") from exc
 
 
 def get_osrm():
@@ -42,6 +53,12 @@ def validation_error(request: Request, exc: RequestValidationError):
                         "fields": [".".join(map(str, error["loc"])) for error in exc.errors()]}})
 
 
+@app.exception_handler(RoadConfigurationError)
+def road_configuration_error(request: Request, exc: RoadConfigurationError):
+    return JSONResponse(status_code=503, content={"error": {"code": "ROAD_INDEX_UNAVAILABLE",
+                        "message": "The configured road attribute index could not be loaded. Rebuild the index and restart the app."}})
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "routing_readiness": "not_checked", "traffic_source": "simulated"}
@@ -49,6 +66,44 @@ def health():
 
 Client = Annotated[OSRMClient, Depends(get_osrm)]
 Roads = Annotated[RoadIndex, Depends(get_roads)]
+
+
+@app.get("/api/readiness")
+def readiness(client: Client):
+    """Probe local OSRM at Kochi; this does not certify all routing services."""
+    connected = False
+    try:
+        nearest = client.nearest(Location(latitude=9.9312, longitude=76.2673))
+        lon, lat = nearest["waypoints"][0]["location"]
+        Location(latitude=lat, longitude=lon)
+        connected = True
+    except (OSRMError, ValueError, KeyError, IndexError, TypeError):
+        pass
+    try:
+        roads = get_roads()
+        road_status = "loaded" if roads.edges else "not_configured"
+    except RoadConfigurationError:
+        road_status = "invalid"
+    return {"osrm": "available" if connected else "unavailable", "road_attributes": road_status,
+            "probe": "nearest at Kochi; run scripts.check_osrm to verify Route and Table"}
+
+
+@app.get("/api/map-config")
+def map_config():
+    url = os.environ.get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or any(key not in url for key in ("{z}", "{x}", "{y}")):
+        return JSONResponse(status_code=503, content={"error": {"code": "MAP_CONFIG_INVALID",
+                            "message": "MAP_TILE_URL must be an HTTP(S) tile template with {z}, {x} and {y}."}})
+    return {"tile_url": url, "tile_attribution": os.environ.get("MAP_TILE_ATTRIBUTION", "© OpenStreetMap contributors")}
+
+
+@app.get("/", include_in_schema=False)
+def map_home():
+    index = FRONTEND_DIST / "index.html"
+    if not index.is_file():
+        return HTMLResponse("<h1>Build the map frontend</h1><p>Run <code>npm --prefix frontend ci --ignore-scripts</code> and <code>npm --prefix frontend run build</code>, then reload.</p>", status_code=503)
+    return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
 @app.post("/api/emergency/route", response_model=RouteResult)
@@ -72,3 +127,8 @@ def block_road(body: BlockRequest, client: Client, roads: Roads):
     updated = body.route_request.model_copy(deep=True)
     updated.scenario.overrides.update({segment_id: "blocked" for segment_id in body.segment_ids})
     return route(updated, client, roads)
+
+
+# Same-origin assets avoid a separate frontend server or permissive CORS.
+# Source: https://fastapi.tiangolo.com/tutorial/static-files/
+app.mount("/assets", StaticFiles(directory=FRONTEND_DIST, check_dir=False), name="map-assets")

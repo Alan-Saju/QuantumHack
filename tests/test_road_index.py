@@ -1,5 +1,6 @@
 from backend.intelligence.road_analyzer import RoadIndex, measurement
 from scripts.build_road_index import build_index
+import pytest
 
 
 def test_extract_attributes_and_oneway(tmp_path):
@@ -27,3 +28,10 @@ def test_ambiguous_and_unparsed_attributes_stay_unknown():
     assert measurement("3.5 t", "t") == 3.5
     records = [{"way_id": 1, "tags": {}, "direction_allowed": True}] * 2
     assert not RoadIndex({"1:2": records}).lookup("1:2").matched
+
+
+def test_invalid_index_records_fail_during_load(tmp_path):
+    path = tmp_path / 'broken.json'
+    path.write_text('{"edges":{"1:2":[{"way_id":10}]}}')
+    with pytest.raises(ValueError):
+        RoadIndex.load(path)

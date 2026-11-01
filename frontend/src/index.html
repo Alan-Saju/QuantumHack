@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="description" content="Explore Kochi road routes using your local OSRM routing service.">
+  <title>QuantumRescue · Kochi routing</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/assets/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script defer src="/assets/vendor/leaflet/leaflet.js"></script>
+  <script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#route-form">Skip to route controls</a>
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="QuantumRescue home"><span class="brand-mark" aria-hidden="true">+</span> Quantum<span>Rescue</span></a>
+    <div class="header-context">KOCHI, KERALA <span class="separator">/</span> ROUTE EXPLORER</div>
+    <span class="prototype-label">Research prototype</span>
+  </header>
+  <main class="workspace">
+    <aside class="sidebar" aria-label="Route planner">
+      <div class="intro"><p class="eyebrow">LOCAL ROAD NETWORK</p><h1>Plan a route.</h1><p>Choose two locations to explore the roads between them.</p></div>
+      <form id="route-form">
+        <fieldset class="location-fieldset">
+          <legend><span class="point-label origin-label">A</span> Ambulance location</legend>
+          <div class="coordinate-grid">
+            <label for="origin-lat">Latitude<input id="origin-lat" type="number" min="-90" max="90" step="any" required value="9.9312" inputmode="decimal"></label>
+            <label for="origin-lon">Longitude<input id="origin-lon" type="number" min="-180" max="180" step="any" required value="76.2673" inputmode="decimal"></label>
+          </div>
+          <button type="button" class="pick-button" id="pick-origin" aria-pressed="true">Set A on map</button>
+          <button type="button" class="location-button" id="use-location" aria-describedby="location-status" disabled>Use my location</button>
+          <p id="location-status" class="location-status" role="status" aria-live="polite">Use your device location for point A, or enter coordinates.</p>
+        </fieldset>
+        <div class="swap-row"><span></span><button type="button" id="swap" class="text-button">Swap locations <span aria-hidden="true">↕</span></button></div>
+        <fieldset class="location-fieldset">
+          <legend><span class="point-label destination-label">B</span> Emergency destination</legend>
+          <div class="coordinate-grid">
+            <label for="destination-lat">Latitude<input id="destination-lat" type="number" min="-90" max="90" step="any" required value="9.9500" inputmode="decimal"></label>
+            <label for="destination-lon">Longitude<input id="destination-lon" type="number" min="-180" max="180" step="any" required value="76.2900" inputmode="decimal"></label>
+          </div>
+          <button type="button" class="pick-button" id="pick-destination" aria-pressed="false">Set B on map</button>
+        </fieldset>
+        <button type="submit" class="primary-button" id="find-route">Find routes <span aria-hidden="true">→</span></button>
+      </form>
+      <section class="route-results" aria-labelledby="results-heading" aria-busy="false">
+        <div class="section-heading"><h2 id="results-heading">Route options</h2><span id="route-count"></span></div>
+        <p id="route-status" class="route-status" role="status" aria-live="polite">Ready when you are. Choose locations and find a route.</p>
+        <div id="route-options"></div>
+        <div id="route-details" hidden></div>
+      </section>
+      <div class="sidebar-footer"><span class="small-dot" aria-hidden="true"></span> OSRM baseline · Traffic simulation off</div>
+    </aside>
+    <section class="map-panel" aria-label="Kochi route map">
+      <div id="map" aria-label="Interactive map. Use coordinate inputs as a keyboard alternative to selecting points." tabindex="0"></div>
+      <div class="map-topbar"><div class="map-title"><span class="small-dot" aria-hidden="true"></span> Kochi road network</div><button id="fit-map" class="map-button" type="button">Fit route</button></div>
+      <p id="map-instruction" class="map-instruction">Click the map to place A · ambulance location</p>
+      <p id="tile-status" class="tile-status" role="status" hidden></p>
+      <div class="map-legend" aria-label="Route legend"><span><i class="legend-line"></i>Selected</span><span><i class="legend-line alternative-line"></i>Alternative</span><span><i class="legend-line rejected-line"></i>Rejected</span></div>
+    </section>
+  </main>
+  <footer class="app-footer"><div class="connection"><span id="connection-dot" class="connection-dot" aria-hidden="true"></span><span id="connection-status" role="status">Checking local OSRM…</span><button type="button" id="check-connection" class="text-button">Check again</button></div><p>For research only. Route checks do not establish emergency suitability.</p></footer>
+</body>
+</html>

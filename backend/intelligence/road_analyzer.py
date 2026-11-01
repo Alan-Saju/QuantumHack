@@ -1,8 +1,20 @@
 import json
 import re
 from pathlib import Path
+from typing import Annotated
 
-from backend.models.route import RoadAttributes
+from pydantic import Field, TypeAdapter
+
+from backend.models.route import Model, RoadAttributes
+
+
+class RoadRecord(Model):
+    way_id: int = Field(gt=0)
+    tags: dict[str, str]
+    direction_allowed: bool
+
+
+IndexRecords = TypeAdapter(dict[Annotated[str, Field(pattern=r"^[1-9]\d*:[1-9]\d*$")], list[RoadRecord]])
 
 
 def measurement(raw: str | None, unit: str) -> float | None:
@@ -22,7 +34,8 @@ class RoadIndex:
 
     @classmethod
     def load(cls, path: str | Path):
-        return cls(json.loads(Path(path).read_text(encoding="utf-8"))["edges"])
+        records = IndexRecords.validate_python(json.loads(Path(path).read_text(encoding="utf-8"))["edges"])
+        return cls({key: [record.model_dump() for record in values] for key, values in records.items()})
 
     def lookup(self, segment_id: str) -> RoadAttributes:
         records = self.edges.get(segment_id, [])

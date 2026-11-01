@@ -1,0 +1,889 @@
+{
+  "components": {
+    "schemas": {
+      "APIError": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "APIError",
+        "type": "object"
+      },
+      "Ambulance": {
+        "additionalProperties": false,
+        "properties": {
+          "height_m": {
+            "default": 2.8,
+            "exclusiveMinimum": 0.0,
+            "title": "Height M",
+            "type": "number"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "weight_t": {
+            "default": 3.5,
+            "exclusiveMinimum": 0.0,
+            "title": "Weight T",
+            "type": "number"
+          },
+          "width_m": {
+            "default": 2.4,
+            "exclusiveMinimum": 0.0,
+            "title": "Width M",
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "title": "Ambulance",
+        "type": "object"
+      },
+      "BlockRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "route_request": {
+            "$ref": "#/components/schemas/RouteRequest"
+          },
+          "segment_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Segment Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "route_request",
+          "segment_ids"
+        ],
+        "title": "BlockRequest",
+        "type": "object"
+      },
+      "Cost": {
+        "additionalProperties": false,
+        "properties": {
+          "congestion_penalty_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Congestion Penalty S",
+            "type": "number"
+          },
+          "risk_penalty_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Risk Penalty S",
+            "type": "number"
+          },
+          "suitability_penalty_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Suitability Penalty S",
+            "type": "number"
+          },
+          "total": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "number"
+          },
+          "travel_time_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Travel Time S",
+            "type": "number"
+          }
+        },
+        "title": "Cost",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/APIError"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "Geometry": {
+        "additionalProperties": false,
+        "properties": {
+          "coordinates": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            "minItems": 2,
+            "title": "Coordinates",
+            "type": "array"
+          },
+          "type": {
+            "const": "LineString",
+            "default": "LineString",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "coordinates"
+        ],
+        "title": "Geometry",
+        "type": "object"
+      },
+      "HealthResult": {
+        "additionalProperties": false,
+        "properties": {
+          "routing_readiness": {
+            "const": "not_checked",
+            "title": "Routing Readiness",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "traffic_source": {
+            "const": "simulated",
+            "title": "Traffic Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "routing_readiness",
+          "traffic_source"
+        ],
+        "title": "HealthResult",
+        "type": "object"
+      },
+      "Location": {
+        "additionalProperties": false,
+        "properties": {
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "title": "Location",
+        "type": "object"
+      },
+      "MapConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "tile_attribution": {
+            "title": "Tile Attribution",
+            "type": "string"
+          },
+          "tile_url": {
+            "title": "Tile Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tile_url",
+          "tile_attribution"
+        ],
+        "title": "MapConfig",
+        "type": "object"
+      },
+      "OptimizationOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "algorithm": {
+            "const": "classical",
+            "default": "classical",
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "consider_risk": {
+            "default": true,
+            "title": "Consider Risk",
+            "type": "boolean"
+          },
+          "consider_road_width": {
+            "default": true,
+            "title": "Consider Road Width",
+            "type": "boolean"
+          },
+          "consider_traffic": {
+            "default": true,
+            "title": "Consider Traffic",
+            "type": "boolean"
+          }
+        },
+        "title": "OptimizationOptions",
+        "type": "object"
+      },
+      "ReadinessResult": {
+        "additionalProperties": false,
+        "properties": {
+          "osrm": {
+            "enum": [
+              "available",
+              "unavailable"
+            ],
+            "title": "Osrm",
+            "type": "string"
+          },
+          "probe": {
+            "title": "Probe",
+            "type": "string"
+          },
+          "road_attributes": {
+            "enum": [
+              "loaded",
+              "not_configured",
+              "invalid"
+            ],
+            "title": "Road Attributes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "osrm",
+          "road_attributes",
+          "probe"
+        ],
+        "title": "ReadinessResult",
+        "type": "object"
+      },
+      "RoadAttributes": {
+        "additionalProperties": false,
+        "properties": {
+          "direction_allowed": {
+            "default": true,
+            "title": "Direction Allowed",
+            "type": "boolean"
+          },
+          "matched": {
+            "default": false,
+            "title": "Matched",
+            "type": "boolean"
+          },
+          "maxheight_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxheight M"
+          },
+          "maxweight_t": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxweight T"
+          },
+          "maxwidth_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxwidth M"
+          },
+          "tags": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "object"
+          },
+          "way_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Way Id"
+          },
+          "width_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width M"
+          }
+        },
+        "title": "RoadAttributes",
+        "type": "object"
+      },
+      "RouteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "ambulance": {
+            "$ref": "#/components/schemas/Ambulance"
+          },
+          "emergency": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "optimization": {
+            "$ref": "#/components/schemas/OptimizationOptions"
+          },
+          "require_known_width": {
+            "default": false,
+            "title": "Require Known Width",
+            "type": "boolean"
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/Scenario"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/Weights"
+          }
+        },
+        "required": [
+          "ambulance",
+          "emergency"
+        ],
+        "title": "RouteRequest",
+        "type": "object"
+      },
+      "RouteResult": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ScoredRoute"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "classical_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoredRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "classical_runtime_ms": {
+            "minimum": 0.0,
+            "title": "Classical Runtime Ms",
+            "type": "number"
+          },
+          "fallback_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoredRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/Scenario"
+          },
+          "scope": {
+            "default": "Best among OSRM candidates; feasibility checks known restrictions only.",
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "no_feasible_route"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "traffic_source": {
+            "const": "simulated",
+            "default": "simulated",
+            "title": "Traffic Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "classical_route",
+          "fallback_route",
+          "candidates",
+          "classical_runtime_ms",
+          "scenario"
+        ],
+        "title": "RouteResult",
+        "type": "object"
+      },
+      "Scenario": {
+        "additionalProperties": false,
+        "properties": {
+          "overrides": {
+            "additionalProperties": {
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "blocked"
+              ],
+              "type": "string"
+            },
+            "maxProperties": 10000,
+            "title": "Overrides",
+            "type": "object"
+          },
+          "seed": {
+            "default": 0,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "title": "Scenario",
+        "type": "object"
+      },
+      "ScoredRoute": {
+        "additionalProperties": false,
+        "properties": {
+          "cost": {
+            "$ref": "#/components/schemas/Cost"
+          },
+          "distance_m": {
+            "minimum": 0.0,
+            "title": "Distance M",
+            "type": "number"
+          },
+          "estimated_time_s": {
+            "minimum": 0.0,
+            "title": "Estimated Time S",
+            "type": "number"
+          },
+          "feasible": {
+            "title": "Feasible",
+            "type": "boolean"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/Geometry"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "rejection_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rejection Reasons",
+            "type": "array"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/ScoredSegment"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "distance_m",
+          "estimated_time_s",
+          "geometry",
+          "feasible",
+          "rejection_reasons",
+          "warnings",
+          "cost",
+          "segments"
+        ],
+        "title": "ScoredRoute",
+        "type": "object"
+      },
+      "ScoredSegment": {
+        "additionalProperties": false,
+        "properties": {
+          "distance_m": {
+            "minimum": 0.0,
+            "title": "Distance M",
+            "type": "number"
+          },
+          "duration_s": {
+            "minimum": 0.0,
+            "title": "Duration S",
+            "type": "number"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "road": {
+            "$ref": "#/components/schemas/RoadAttributes"
+          },
+          "source": {
+            "title": "Source",
+            "type": "integer"
+          },
+          "target": {
+            "title": "Target",
+            "type": "integer"
+          },
+          "traffic": {
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "blocked"
+            ],
+            "title": "Traffic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "target",
+          "distance_m",
+          "duration_s",
+          "road",
+          "traffic"
+        ],
+        "title": "ScoredSegment",
+        "type": "object"
+      },
+      "Weights": {
+        "additionalProperties": false,
+        "properties": {
+          "congestion": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Congestion",
+            "type": "number"
+          },
+          "risk": {
+            "default": 1,
+            "minimum": 0.0,
+            "title": "Risk",
+            "type": "number"
+          },
+          "suitability": {
+            "default": 1,
+            "minimum": 0.0,
+            "title": "Suitability",
+            "type": "number"
+          },
+          "time": {
+            "default": 1,
+            "minimum": 0.0,
+            "title": "Time",
+            "type": "number"
+          }
+        },
+        "title": "Weights",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Phases 1–3. Simulated traffic and classical candidate ranking. Research use only.",
+    "title": "QuantumRescue",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/emergency/block-road": {
+      "post": {
+        "operationId": "block_road_api_emergency_block_road_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid route request"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "OSRM or configured road data is unavailable"
+          }
+        },
+        "summary": "Block Road"
+      }
+    },
+    "/api/emergency/route": {
+      "post": {
+        "operationId": "route_api_emergency_route_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid route request"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "OSRM or configured road data is unavailable"
+          }
+        },
+        "summary": "Route"
+      }
+    },
+    "/api/emergency/simulate-traffic": {
+      "post": {
+        "description": "Recalculate with the supplied scenario. No global traffic state is mutated.",
+        "operationId": "simulate_traffic_api_emergency_simulate_traffic_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid route request"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "OSRM or configured road data is unavailable"
+          }
+        },
+        "summary": "Simulate Traffic"
+      }
+    },
+    "/api/map-config": {
+      "get": {
+        "operationId": "map_config_api_map_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Map Config"
+      }
+    },
+    "/api/readiness": {
+      "get": {
+        "description": "Probe local OSRM at Kochi; this does not certify all routing services.",
+        "operationId": "readiness_api_readiness_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readiness"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    }
+  }
+}

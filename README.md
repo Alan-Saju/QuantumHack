@@ -2,7 +2,7 @@
 
 Research prototype for ambulance route comparison in Kochi. OSRM supplies road-network routes; Python scores alternatives using road attributes, deterministic simulated congestion, and vehicle constraints.
 
-The initial implementation covers the Python work for phases 1–3 of [the implementation plan](QuantumRescue_Implementation_Plan.md). OSRM infrastructure is supplied but needs Docker and map preparation on the host. QUBO, QAOA, exact graph optimization and the dashboard are later phases.
+The Python groundwork for OSRM integration, scoring and classical validation is implemented. The revised [implementation plan](QuantumRescue_Implementation_Plan.md) prioritizes **local OSRM and an interactive map as the first milestone**. Docker and map preparation are still needed on the host, and the map frontend is not yet built. Further scoring integration and quantum optimization follow verification of that first milestone.
 
 ## Quick start
 

@@ -1,9 +1,26 @@
 # QuantumRescue --- Implementation Plan
 
 **Project:** OSRM-powered hybrid quantum-classical emergency routing\
-**Prototype target:** 5--6 hours\
+**Prototype target:** Milestone-based; original 5--6 hour estimate is provisional\
 **Initial use case:** Ambulance routing in Kochi, Kerala\
 **Status:** Research prototype / hackathon demonstration
+
+**Revised priority (1 November 2026):** Complete local OSRM and an
+interactive map before extending emergency scoring or quantum optimization.
+The first usable demonstration must show real road routes on a map.
+
+### Current implementation status
+
+- Python environment, OSRM preparation scripts, an OSM attribute extractor,
+  classical scoring/validation, and a FastAPI routing API are implemented.
+- The synthetic offline demonstration has run successfully. This verifies
+  the demo pipeline, not routing on the real Kochi road network.
+- Local OSRM preprocessing and live routing have not yet been verified;
+  Docker and a suitable map extract are prerequisites.
+- No map frontend, QUBO model, or QAOA integration has been implemented.
+
+Retain the existing backend work. The next implementation effort is Phase 1
+below; do not advance to new optimization work until its acceptance checks pass.
 
 ------------------------------------------------------------------------
 
@@ -78,9 +95,10 @@ classical fallback.
                                                   scenarios
   -----------------------------------------------------------------------
 
-For a six-hour build, use the existing Angular setup if it is ready. If
-not, use Streamlit temporarily to avoid losing time on frontend
-integration.
+Build the minimal Leaflet map during Phase 1. Angular remains the planned
+dashboard framework, but no Angular application exists yet. If its setup
+would delay the first map milestone, use a minimal web frontend and extend
+that same map later. Do not wait for QAOA to build the map.
 
 ## 4. System Architecture
 
@@ -89,6 +107,7 @@ flowchart TD
     A[Ambulance location and incident location] --> B[FastAPI backend]
     B --> C[OSRM route generation]
     C --> D[Candidate routes and road geometry]
+    D --> O[Phase 1: Leaflet map with endpoints and OSRM routes]
     D --> E[Road and traffic enrichment]
     E --> F[Emergency cost calculator]
     F --> G[Classical preprocessing]
@@ -101,17 +120,68 @@ flowchart TD
     M --> N[Angular and Leaflet dashboard]
 ```
 
-## 5. Six-Hour Implementation Schedule
+## 5. Implementation Milestones
 
-### Phase 1 --- Environment and OSRM Setup
+The sequence below replaces the fixed one-phase-per-hour schedule.
+Docker installation, map download and preprocessing time depend on the
+host and extract size. Complete each milestone's verification before
+moving to the next; an offline fixture alone does not complete Phase 1.
 
-**Target:** Hour 1
+### Phase 1 --- Local OSRM and Interactive Map Setup
 
-Tasks: 1. Create the project directory. 2. Set up a Python virtual
-environment. 3. Install Docker Desktop or use an existing Docker
-installation. 4. Download a small OpenStreetMap extract for the selected
-test area. 5. Prepare OSRM routing data. 6. Start the OSRM service
-locally. 7. Test the Route, Nearest and Table APIs.
+**Priority:** Immediate next milestone; required before further optimization.
+
+#### 1.1 Prepare the local routing service
+
+1. Reuse the project directory, Python environment and existing OSRM scripts.
+2. Install/start Docker Desktop with Linux containers and verify the engine.
+3. Obtain a small Kochi OSM extract, or use the full Kerala extract if needed.
+4. Place it at `osrm/data/map.osm.pbf` and run `osrm/prepare.ps1`.
+5. Prepare OSRM using extraction, partitioning and customization, then start
+   the local service with the existing conservative car-based Lua profile.
+6. Run `python -m scripts.check_osrm` to exercise Route, Nearest and Table.
+
+**Verification:** The real local service returns valid Kochi route geometry,
+nearest-road information and a duration matrix. Request alternatives, but
+accept one route when OSRM cannot provide alternatives.
+
+#### 1.2 Connect real route data to the backend
+
+1. Generate `data/road_network/roads.json` from the same OSM extract with
+   `python -m scripts.build_road_index` and configure `ROAD_INDEX_PATH`.
+2. Start FastAPI with the local `OSRM_BASE_URL`.
+3. Exercise `POST /api/emergency/route` with two locations in map coverage.
+4. Verify candidate GeoJSON coordinates, distances, durations and warnings.
+5. Keep scoring controls disabled for the initial baseline view. Display
+   limited feasibility checks and unknown attributes explicitly; do not
+   require QUBO, QAOA or new scoring capabilities to render road geometry.
+
+**Verification:** The API returns candidates sourced from local OSRM,
+with no synthetic fixture substituted for a failed live request.
+
+#### 1.3 Build the initial map interface
+
+1. Create a Leaflet map centered on Kochi with visible map attribution.
+2. Allow origin and destination selection by map clicks or coordinate inputs.
+3. Show distinct origin/destination markers and a route action.
+4. Call the backend routing endpoint and draw returned candidate GeoJSON.
+5. Highlight the selected route, distinguish rejected candidates, and fit
+   the map bounds to the route geometry.
+6. Show distance, estimated duration, data uncertainty and route status.
+7. Handle loading, invalid inputs, no route and unavailable OSRM states;
+   clear obsolete results when a new request fails.
+8. Configure a development proxy or explicit local frontend origin for API
+   access, depending on how the frontend is served.
+
+The basemap and the routing graph are separate resources. Local OSRM does
+not provide background map tiles. Configure a tile provider with appropriate
+attribution and usage terms; document that hosted tiles require internet
+access. Fully offline tile hosting is a later extension.
+
+**Verification:** In a browser, choose two Kochi locations and see an actual
+local-OSRM route, markers, distance and duration. Change an endpoint and
+confirm the route updates. Stop OSRM and confirm a clear error replaces
+the old result. Test the frontend build and existing backend regression suite.
 
 Suggested project structure:
 
@@ -122,8 +192,10 @@ quantum-rescue/
 ├── data/
 │   └── road_network/
 ├── osrm/
-│   ├── map.osm.pbf
+│   ├── data/
+│   │   └── map.osm.pbf
 │   ├── ambulance.lua
+│   ├── prepare.ps1
 │   └── docker-compose.yml
 └── README.md
 ```
@@ -133,12 +205,13 @@ https://project-osrm.org/docs/v5.24.0/api/ - OSRM backend:
 https://github.com/Project-OSRM/osrm-backend - Geofabrik Kerala extract:
 https://download.geofabrik.de/asia/india/kerala.html
 
-**Deliverable:** A local OSRM instance returns a route between two
-coordinates.
+**Deliverable:** A working map backed by local OSRM and FastAPI, using
+real Kochi road geometry. Only after this is verified should Phase 2 resume.
 
 ### Phase 2 --- Emergency Intelligence Engine
 
-**Target:** Hour 2
+**Dependency:** Phase 1 accepted. Reuse the implemented engine and verify
+its behavior on the real routes now visible on the map.
 
 Create:
 
@@ -206,7 +279,8 @@ rather than merely add a penalty.
 
 ### Phase 3 --- Classical Baseline
 
-**Target:** Hour 3
+**Dependency:** Phase 2 verified on real route data. Reuse the implemented
+classical optimizer and extend the initial map with cost comparisons.
 
 Create:
 
@@ -220,7 +294,8 @@ Tasks: 1. Request candidate routes from OSRM. 2. Match route geometry to
 road-segment attributes where possible. 3. Calculate the custom cost for
 each candidate. 4. Reject routes that violate known hard constraints. 5.
 Rank remaining routes by total predicted cost. 6. Return the best
-feasible route. 7. Keep a standard OSRM route as a fallback.
+feasible route. 7. Keep a standard OSRM route as a fallback only if it
+passes the same validation; otherwise return no feasible route when none remain.
 
 For a stronger baseline, build a small directed road graph with NetworkX
 and run A\* using the custom edge costs.
@@ -234,7 +309,7 @@ shortest-path proof.
 
 ### Phase 4 --- QUBO Formulation
 
-**Target:** Hour 4
+**Dependency:** The map and classical routing baseline work end to end.
 
 Create:
 
@@ -288,7 +363,7 @@ graph.
 
 ### Phase 5 --- QAOA Integration
 
-**Target:** Hour 5
+**Dependency:** Phase 4 QUBO verified against an exact classical solution.
 
 Create:
 
@@ -340,9 +415,10 @@ simulator experiment.
 **Deliverable:** QAOA produces candidate solutions that can be decoded
 and validated.
 
-### Phase 6 --- Dashboard and Integration
+### Phase 6 --- Extend the Existing Map with Optimizer Comparisons
 
-**Target:** Hour 6
+**Dependency:** Validated classical and QAOA results are available.
+Extend the map built in Phase 1; this phase does not introduce the first map.
 
 Display: - Ambulance starting location. - Emergency destination. -
 Candidate routes. - Selected classical route. - Best feasible QAOA
@@ -356,6 +432,17 @@ Use Leaflet to render GeoJSON route geometry.
 classical-versus-quantum comparisons.
 
 ## 6. Backend API Design
+
+For Phase 1, consume the existing `POST /api/emergency/route` response,
+including `candidates[].geometry`, rather than waiting for quantum APIs.
+Use `optimization.algorithm: "classical"` and disable optional scoring
+controls for the initial OSRM baseline view. The map remains useful even
+when some candidates fail the limited feasibility checks.
+
+The endpoint list and quantum examples below describe the eventual API.
+The optimize, stored-results retrieval and comparison endpoints are later
+work; do not make the initial map depend on them. Simulation endpoints
+already exist, but map controls for them follow the baseline map milestone.
 
   -----------------------------------------------------------------------------------
   Method                  Endpoint                            Purpose
@@ -462,8 +549,20 @@ quantum-rescue/
 
 ## 8. Success Criteria
 
+### First milestone: local OSRM and map
+
 -   [ ] Local OSRM instance responds successfully.
--   [ ] Alternative routes can be requested.
+-   [ ] Route, Nearest and Table services pass a live Kochi smoke check.
+-   [ ] Alternative routes can be requested; a single valid result is handled.
+-   [ ] Backend returns real OSRM candidate GeoJSON without fixture substitution.
+-   [ ] Map loads with attribution and origin/destination selection.
+-   [ ] Actual routes, distance and duration are displayed on the map.
+-   [ ] Changing an endpoint recalculates and redraws the routes.
+-   [ ] No-route and service-failure states clear stale route results.
+-   [ ] Frontend build and backend regression checks pass.
+
+### Subsequent milestones: intelligence and optimization
+
 -   [ ] Road attributes are extracted where available.
 -   [ ] Missing road attributes are explicitly represented.
 -   [ ] Simulated traffic changes route costs.
@@ -473,7 +572,7 @@ quantum-rescue/
 -   [ ] QAOA runs using a simulator.
 -   [ ] Quantum samples are decoded and validated.
 -   [ ] Classical exact optimum is available for small test cases.
--   [ ] Results are displayed on a map.
+-   [ ] Classical and quantum comparisons extend the existing map.
 -   [ ] Road-blockage simulation triggers recalculation.
 
 ## 9. Important Technical Limitations
@@ -512,19 +611,19 @@ approval from relevant emergency-service and road authorities.
 
 ## 10. Recommended Build Order
 
-If time is running out, prioritize in this order:
+Follow this order, with the first three items forming the immediate milestone:
 
-1.  OSRM local setup.
-2.  Road-data extraction.
-3.  Emergency-specific cost calculation.
-4.  Classical routing baseline.
-5.  Small QUBO formulation.
-6.  QAOA simulation.
-7.  Route validation and comparison.
-8.  Dashboard visualization.
-9.  Warm-start QAOA and live traffic as extensions.
+1.  Start local OSRM and verify Route, Nearest and Table with real Kochi data.
+2.  Connect FastAPI to local OSRM and the matching road-attribute extract.
+3.  Build and verify the interactive Leaflet map with actual route geometry.
+4.  Verify emergency-specific scoring and classical validation on those routes.
+5.  Add map controls for simulated traffic, closures and classical comparisons.
+6.  Build a small QUBO and verify it with exact classical optimization.
+7.  Run QAOA, decode candidates and validate feasibility.
+8.  Extend the same map with classical-versus-quantum comparisons.
+9.  Consider warm-start QAOA and live traffic as extensions.
 
-**The first milestone is simple:** get OSRM running locally and retrieve
-two or three routes between a starting coordinate and an emergency
-location. Once that works, build the emergency intelligence layer on
-top.
+**The first milestone:** choose two Kochi locations on a map and display
+a real route returned by local OSRM through FastAPI. Request alternatives
+without requiring OSRM to return a particular count. Complete and verify
+this experience before moving to further intelligence or quantum work.

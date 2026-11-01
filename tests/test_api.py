@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from backend.main import app, create_app, get_osrm, get_roads
 from backend.models.route import Location
-from backend.osrm.client import OSRMClient, OSRMError
+from backend.osrm.client import OSRMClient, OSRMError, OSRMNoSegmentError
 from test_routing import index, payload, request
 
 
@@ -69,6 +69,21 @@ def test_no_route_is_normal_result(status, data):
     point = Location(latitude=9.93, longitude=76.26)
     with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(status, json=data))) as http:
         assert OSRMClient(http).routes(point, point) == []
+
+
+def test_no_segment_is_a_location_error(api):
+    point = Location(latitude=9.93, longitude=76.26)
+    with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(400, json={
+        'code': 'NoSegment', 'message': 'Could not find a matching segment for coordinate 1'
+    }))) as http:
+        client = OSRMClient(http)
+        with pytest.raises(OSRMNoSegmentError):
+            client.routes(point, point)
+        app.dependency_overrides[get_osrm] = lambda: client
+        response = api.post('/api/emergency/route', json=request().model_dump())
+        assert response.status_code == 422
+        assert response.json()['error']['code'] == 'LOCATION_NOT_ROUTABLE'
+        assert '100' in response.json()['error']['message']
 
 
 @pytest.mark.parametrize("data", [{"code": "Ok"}, {"code": "Ok", "routes": [{}]}, []])

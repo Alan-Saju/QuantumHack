@@ -1,6 +1,7 @@
 param(
     [switch]$PrepareOSRM,
     [Alias('DownloadMap')][switch]$DownloadKerala,
+    [switch]$NoReload,
     [ValidateRange(1024, 65535)][int]$Port = 8000
 )
 $ErrorActionPreference = 'Stop'
@@ -38,7 +39,9 @@ try {
     if (-not $env:ROAD_INDEX_PATH) {
         Write-Warning 'Road attributes are not configured. Unknown restrictions will be shown in route results.'
     }
-    & $pythonPath -m uvicorn backend.main:app --host 127.0.0.1 --port $Port
+    $serverArgs = @('-m', 'uvicorn', 'backend.main:app', '--host', '127.0.0.1', '--port', $Port)
+    if (-not $NoReload) { $serverArgs += @('--reload', '--reload-dir', 'backend') }
+    & $pythonPath @serverArgs
     if ($LASTEXITCODE -ne 0) { throw 'API startup failed.' }
 }
 finally {

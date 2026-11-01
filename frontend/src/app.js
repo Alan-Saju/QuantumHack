@@ -126,6 +126,8 @@ async function findRoutes() {
       }
       throw new Error(failure?.error?.code === 'ROAD_INDEX_UNAVAILABLE'
         ? 'Road attributes could not be loaded. Rebuild the road index and restart the app.'
+        : failure?.error?.code === 'LOCATION_NOT_ROUTABLE'
+        ? 'No routable road within 100 m of a location. Move the points closer to a road within your map extract.'
         : routeError(response.status));
     }
     const result = await response.json();

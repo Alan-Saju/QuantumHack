@@ -39,7 +39,7 @@ try {
   const server = await startDevServer({ port: 0, backendTarget: 'http://127.0.0.1:1' });
   const page = await browser.newPage();
   try {
-    await page.goto(`http://127.0.0.1:${server.address().port}`);
+    await page.goto(`http://127.0.0.1:${server.address().port}/routes`);
     await page.getByText('Map configuration could not be loaded. Restart the app and try again.').waitFor();
     assert.equal(await page.locator('.demo-banner').count(), 0);
     assert.equal(await page.locator('.route-option').count(), 0);

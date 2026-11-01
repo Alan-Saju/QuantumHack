@@ -49,7 +49,7 @@ try {
     if (mode === 'empty') return route.fulfill({ json: fixtures['no-route'].response });
     await route.fulfill({ json: result(lastBody) });
   });
-  await page.goto(url);
+  await page.goto(`${url}/routes`);
   assert.equal(await page.locator('header.app-header').count(), 0, 'The map has no page header');
   assert.ok((await page.locator('#map').boundingBox()).height >= 990, 'Map fills the viewport');
   await page.getByRole('button', { name: 'Hide planner' }).click();

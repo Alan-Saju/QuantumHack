@@ -1,5 +1,12 @@
 # Shared API contract
 
+The allocation endpoints are included in the generated OpenAPI contract:
+`GET /api/allocation/demo` and `POST /api/allocation/optimize`. The first supplies
+the editable three-resource scenario. The second returns exact and QAOA results,
+QUBO variable order and upper-triangular coefficients, and explicit data-source
+and fallback labels. Allocation uses the real local backend in browser tests;
+the Node-only mock runner below covers the original route inspector only.
+
 `openapi.json` is generated from FastAPI and its Pydantic models. Both
 developers should use it to coordinate request and response changes.
 `fixtures/` contains **synthetic** POST `/api/emergency/route` examples for

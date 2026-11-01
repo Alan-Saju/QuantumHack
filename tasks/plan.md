@@ -174,3 +174,11 @@ Task completion is tracked in [todo.md](todo.md).
   repository-owner access; adding local documentation does not grant it.
 - This work enables two developers. It does not introduce live collaborative
   editing or multi-user application sessions.
+
+## Resource allocation pivot — 1 November 2026
+
+The active product plan is now [the allocation implementation plan](../QuantumRescue_Implementation_Plan.md).
+The collaboration tasks above remain valid infrastructure work. Product build order:
+scenario + exact/QUBO -> QAOA -> allocation API/map -> verification/configuration.
+The previous requirement to finish live OSRM before quantum work is superseded;
+synthetic allocation and live road-routing modes must be explicitly distinguished.

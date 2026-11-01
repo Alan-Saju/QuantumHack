@@ -2,7 +2,7 @@
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import urlparse
 
 import httpx
@@ -12,10 +12,12 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 
+from backend.allocation.scenario import AllocationRequest, demo_scenario
+from backend.allocation.service import AllocationResult, allocate
 from backend.intelligence.road_analyzer import RoadIndex
 from backend.models.route import ErrorResponse, HealthResult, Location, MapConfig, Model, ReadinessResult, RouteRequest, RouteResult
 from backend.optimization.classical_optimizer import optimize
-from backend.osrm.client import OSRMClient, OSRMError
+from backend.osrm.client import OSRMClient, OSRMError, OSRMNoSegmentError
 
 router = APIRouter()
 FRONTEND_DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
@@ -46,6 +48,10 @@ def upstream_error(request: Request, exc: OSRMError):
                         "message": "Local OSRM is unavailable or returned invalid routing data."}})
 
 
+def location_error(request: Request, exc: OSRMNoSegmentError):
+    return JSONResponse(status_code=422, content={"error": {"code": "LOCATION_NOT_ROUTABLE", "message": str(exc)}})
+
+
 def validation_error(request: Request, exc: RequestValidationError):
     return JSONResponse(status_code=422, content={"error": {"code": "VALIDATION_ERROR",
                         "message": "Invalid request. Check the schema at /docs.",
@@ -64,6 +70,16 @@ def health():
 
 Client = Annotated[OSRMClient, Depends(get_osrm)]
 Roads = Annotated[RoadIndex, Depends(get_roads)]
+
+
+@router.get('/api/allocation/demo', response_model=AllocationRequest, responses={422: {'model': ErrorResponse}})
+def allocation_demo(hospital_count: Literal['3', '5'] = '3'):
+    return demo_scenario(int(hospital_count))
+
+
+@router.post('/api/allocation/optimize', response_model=AllocationResult, responses=ROUTE_ERRORS)
+def allocation_optimize(body: AllocationRequest, client: Client):
+    return allocate(body, client)
 
 
 @router.get("/api/readiness", response_model=ReadinessResult)
@@ -122,19 +138,29 @@ def block_road(body: BlockRequest, client: Client, roads: Roads):
 def create_app(*, frontend_dist: Path | None = None) -> FastAPI:
     """Build an isolated app; tests can supply assets without a Node installation."""
     assets = FRONTEND_DIST if frontend_dist is None else Path(frontend_dist)
-    application = FastAPI(title="QuantumRescue", version="0.1.0",
-                         description="Phases 1–3. Simulated traffic and classical candidate ranking. Research use only.")
+    application = FastAPI(title="QuantumRescue", version="0.2.0",
+                         description="Joint emergency resource allocation with QUBO, local QAOA and an exact baseline. Research use only.")
     application.add_exception_handler(OSRMError, upstream_error)
+    application.add_exception_handler(OSRMNoSegmentError, location_error)
     application.add_exception_handler(RequestValidationError, validation_error)
     application.add_exception_handler(RoadConfigurationError, road_configuration_error)
     application.include_router(router)
 
     @application.get("/", include_in_schema=False)
     def map_home():
-        index = assets / "index.html"
+        index = assets / "allocation.html"
+        if not index.is_file():
+            index = assets / "index.html"
         if not index.is_file():
             return HTMLResponse("<h1>Build the map frontend</h1><p>Run <code>npm --prefix frontend ci --ignore-scripts</code> and <code>npm --prefix frontend run build</code>, then reload.</p>", status_code=503)
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+    @application.get('/routes', include_in_schema=False)
+    def route_inspector():
+        index = assets / 'index.html'
+        if not index.is_file():
+            return map_home()
+        return FileResponse(index, headers={'Cache-Control': 'no-cache'})
 
 
     # Same-origin assets avoid permissive CORS in the combined app.

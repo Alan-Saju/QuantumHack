@@ -2,7 +2,7 @@ param([Alias('DownloadMap')][switch]$DownloadKerala)
 $ErrorActionPreference = 'Stop'
 $dataPath = Join-Path $PSScriptRoot 'data'
 $mapPath = Join-Path $dataPath 'map.osm.pbf'
-$image = 'osrm/osrm-backend:v5.27.1'
+$image = 'ghcr.io/project-osrm/osrm-backend:v5.27.1'
 $dockerCommand = Get-Command docker -ErrorAction SilentlyContinue
 $dockerExe = if ($dockerCommand) { $dockerCommand.Source } else {
     Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin\docker.exe'
@@ -14,6 +14,9 @@ if (-not (Test-Path -LiteralPath $dockerExe)) {
 if ($LASTEXITCODE -ne 0) { throw 'Docker engine is not available.' }
 & $dockerExe compose version
 if ($LASTEXITCODE -ne 0) { throw 'Docker Compose is required. Enable it in Docker Desktop.' }
+Write-Host "Checking OSRM image: $image"
+& $dockerExe pull $image
+if ($LASTEXITCODE -ne 0) { throw "Unable to pull OSRM image $image. Check access to ghcr.io and retry." }
 if ($DownloadKerala -and -not (Test-Path -LiteralPath $mapPath)) {
     # Geofabrik publishes Southern Zone, including Kerala, with no state subregions.
     # Keep -DownloadKerala for compatibility with existing setup commands.

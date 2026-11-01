@@ -13,13 +13,15 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 
 from backend.intelligence.road_analyzer import RoadIndex
-from backend.models.route import Location, Model, RouteRequest, RouteResult
+from backend.models.route import ErrorResponse, HealthResult, Location, MapConfig, Model, ReadinessResult, RouteRequest, RouteResult
 from backend.optimization.classical_optimizer import optimize
 from backend.osrm.client import OSRMClient, OSRMError
 
 app = FastAPI(title="QuantumRescue", version="0.1.0",
               description="Phases 1–3. Simulated traffic and classical candidate ranking. Research use only.")
 FRONTEND_DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
+ROUTE_ERRORS = {422: {"model": ErrorResponse, "description": "Invalid route request"},
+                503: {"model": ErrorResponse, "description": "OSRM or configured road data is unavailable"}}
 
 
 class RoadConfigurationError(Exception):
@@ -59,7 +61,7 @@ def road_configuration_error(request: Request, exc: RoadConfigurationError):
                         "message": "The configured road attribute index could not be loaded. Rebuild the index and restart the app."}})
 
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResult)
 def health():
     return {"status": "ok", "routing_readiness": "not_checked", "traffic_source": "simulated"}
 
@@ -68,7 +70,7 @@ Client = Annotated[OSRMClient, Depends(get_osrm)]
 Roads = Annotated[RoadIndex, Depends(get_roads)]
 
 
-@app.get("/api/readiness")
+@app.get("/api/readiness", response_model=ReadinessResult)
 def readiness(client: Client):
     """Probe local OSRM at Kochi; this does not certify all routing services."""
     connected = False
@@ -88,7 +90,7 @@ def readiness(client: Client):
             "probe": "nearest at Kochi; run scripts.check_osrm to verify Route and Table"}
 
 
-@app.get("/api/map-config")
+@app.get("/api/map-config", response_model=MapConfig, responses={503: {"model": ErrorResponse}})
 def map_config():
     url = os.environ.get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
     parsed = urlparse(url)
@@ -106,12 +108,12 @@ def map_home():
     return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
-@app.post("/api/emergency/route", response_model=RouteResult)
+@app.post("/api/emergency/route", response_model=RouteResult, responses=ROUTE_ERRORS)
 def route(body: RouteRequest, client: Client, roads: Roads):
     return optimize(client.routes(body.ambulance, body.emergency), roads, body)
 
 
-@app.post("/api/emergency/simulate-traffic", response_model=RouteResult)
+@app.post("/api/emergency/simulate-traffic", response_model=RouteResult, responses=ROUTE_ERRORS)
 def simulate_traffic(body: RouteRequest, client: Client, roads: Roads):
     """Recalculate with the supplied scenario. No global traffic state is mutated."""
     return route(body, client, roads)
@@ -122,7 +124,7 @@ class BlockRequest(Model):
     segment_ids: list[str] = Field(min_length=1, max_length=1000)
 
 
-@app.post("/api/emergency/block-road", response_model=RouteResult)
+@app.post("/api/emergency/block-road", response_model=RouteResult, responses=ROUTE_ERRORS)
 def block_road(body: BlockRequest, client: Client, roads: Roads):
     updated = body.route_request.model_copy(deep=True)
     updated.scenario.overrides.update({segment_id: "blocked" for segment_id in body.segment_ids})

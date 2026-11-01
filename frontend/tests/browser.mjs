@@ -1,6 +1,6 @@
 // Run against the real FastAPI app. Only routing responses and tile images are mocked.
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 
 const url = process.env.APP_URL ?? 'http://127.0.0.1:8000';
@@ -10,19 +10,20 @@ await mkdir(output, { recursive: true });
 let mode = 'success';
 let lastBody;
 let requestCount = 0;
+const fixtures = Object.fromEntries(await Promise.all(['success', 'no-route', 'rejected', 'service-failure'].map(async name =>
+  [name, JSON.parse(await readFile(new URL(`../../contracts/fixtures/${name}.json`, import.meta.url), 'utf8'))])));
 
 function result(body) {
   const a = [body.ambulance.longitude, body.ambulance.latitude];
   const b = [body.emergency.longitude, body.emergency.latitude];
-  const candidates = [0, 1].map(index => ({
-    id: `osrm-${index}`, distance_m: 2400 + index * 400, estimated_time_s: 420 + index * 60,
-    geometry: { type: 'LineString', coordinates: [a, [(a[0] + b[0]) / 2 + index * 0.005, (a[1] + b[1]) / 2], b] },
-    feasible: mode !== 'rejected', rejection_reasons: mode === 'rejected' ? ['Road closed'] : [],
-    warnings: ['Width does not establish usable clearance.'],
-    segments: [{ road: { matched: true } }],
-  }));
-  return { status: mode === 'rejected' ? 'no_feasible_route' : 'success',
-    candidates, classical_route: mode === 'rejected' ? null : candidates[0] };
+  const payload = structuredClone(fixtures[mode === 'rejected' ? 'rejected' : 'success'].response);
+  // Move the synthetic geometry with user inputs while keeping the shared response shape.
+  payload.candidates.forEach((route, index) => {
+    route.geometry.coordinates = [a, [(a[0] + b[0]) / 2 + index * 0.005, (a[1] + b[1]) / 2], b];
+  });
+  if (payload.classical_route) payload.classical_route = payload.candidates.find(route => route.id === payload.classical_route.id);
+  if (payload.fallback_route) payload.fallback_route = payload.candidates.find(route => route.id === payload.fallback_route.id);
+  return payload;
 }
 
 try {
@@ -40,8 +41,8 @@ try {
     assert.equal(lastBody.optimization.consider_traffic, false);
     assert.equal(lastBody.optimization.consider_road_width, false);
     if (mode === 'slow') await new Promise(resolve => setTimeout(resolve, 700));
-    if (mode === 'unavailable') return route.fulfill({ status: 503, json: { error: { code: 'OSRM_UNAVAILABLE' } } });
-    if (mode === 'empty') return route.fulfill({ json: { status: 'no_feasible_route', candidates: [], classical_route: null } });
+    if (mode === 'unavailable') return route.fulfill({ status: fixtures['service-failure'].status_code, json: fixtures['service-failure'].response });
+    if (mode === 'empty') return route.fulfill({ json: fixtures['no-route'].response });
     await route.fulfill({ json: result(lastBody) });
   });
   await page.goto(url);

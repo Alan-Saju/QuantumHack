@@ -1,0 +1,227 @@
+{
+  "data_source": "synthetic",
+  "description": "Offline contract fixture, not surveyed road data or a live OSRM result. Runtime is fixed to zero.",
+  "method": "POST",
+  "path": "/api/emergency/route",
+  "request": {
+    "ambulance": {
+      "height_m": 2.8,
+      "latitude": 9.9312,
+      "longitude": 76.2673,
+      "weight_t": 3.5,
+      "width_m": 2.4
+    },
+    "emergency": {
+      "latitude": 9.932,
+      "longitude": 76.2691
+    },
+    "optimization": {
+      "algorithm": "classical",
+      "consider_risk": false,
+      "consider_road_width": false,
+      "consider_traffic": false
+    },
+    "require_known_width": false,
+    "scenario": {
+      "overrides": {
+        "1:2": "blocked",
+        "1:3": "blocked",
+        "2:4": "blocked",
+        "3:4": "blocked"
+      },
+      "seed": 0
+    },
+    "weights": {
+      "congestion": 0.0,
+      "risk": 1.0,
+      "suitability": 1.0,
+      "time": 1.0
+    }
+  },
+  "response": {
+    "candidates": [
+      {
+        "cost": {
+          "congestion_penalty_s": 0.0,
+          "risk_penalty_s": 0.0,
+          "suitability_penalty_s": 0.0,
+          "total": 20.0,
+          "travel_time_s": 20.0
+        },
+        "distance_m": 200.0,
+        "estimated_time_s": 20.0,
+        "feasible": false,
+        "geometry": {
+          "coordinates": [
+            [
+              76.2673,
+              9.9312
+            ],
+            [
+              76.2682,
+              9.9316
+            ],
+            [
+              76.2691,
+              9.932
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "osrm-0",
+        "rejection_reasons": [
+          "1:2: simulated road closure",
+          "2:4: simulated road closure"
+        ],
+        "segments": [
+          {
+            "distance_m": 100.0,
+            "duration_s": 10.0,
+            "id": "1:2",
+            "road": {
+              "direction_allowed": true,
+              "matched": true,
+              "maxheight_m": null,
+              "maxweight_t": null,
+              "maxwidth_m": null,
+              "tags": {
+                "highway": "residential",
+                "surface": "asphalt",
+                "width": "4"
+              },
+              "way_id": 10,
+              "width_m": 4.0
+            },
+            "source": 1,
+            "target": 2,
+            "traffic": "blocked"
+          },
+          {
+            "distance_m": 100.0,
+            "duration_s": 10.0,
+            "id": "2:4",
+            "road": {
+              "direction_allowed": true,
+              "matched": true,
+              "maxheight_m": null,
+              "maxweight_t": null,
+              "maxwidth_m": null,
+              "tags": {
+                "highway": "residential",
+                "surface": "asphalt",
+                "width": "4"
+              },
+              "way_id": 11,
+              "width_m": 4.0
+            },
+            "source": 2,
+            "target": 4,
+            "traffic": "blocked"
+          }
+        ],
+        "warnings": [
+          "Mapped width is not proof of usable clearance; turning, obstructions and node restrictions are not modeled."
+        ]
+      },
+      {
+        "cost": {
+          "congestion_penalty_s": 0.0,
+          "risk_penalty_s": 0.0,
+          "suitability_penalty_s": 0.0,
+          "total": 30.0,
+          "travel_time_s": 30.0
+        },
+        "distance_m": 240.0,
+        "estimated_time_s": 30.0,
+        "feasible": false,
+        "geometry": {
+          "coordinates": [
+            [
+              76.2673,
+              9.9312
+            ],
+            [
+              76.2678,
+              9.9324
+            ],
+            [
+              76.2691,
+              9.932
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "osrm-1",
+        "rejection_reasons": [
+          "1:3: simulated road closure",
+          "3:4: simulated road closure"
+        ],
+        "segments": [
+          {
+            "distance_m": 120.0,
+            "duration_s": 15.0,
+            "id": "1:3",
+            "road": {
+              "direction_allowed": true,
+              "matched": true,
+              "maxheight_m": null,
+              "maxweight_t": null,
+              "maxwidth_m": null,
+              "tags": {
+                "highway": "residential",
+                "surface": "asphalt",
+                "width": "4"
+              },
+              "way_id": 12,
+              "width_m": 4.0
+            },
+            "source": 1,
+            "target": 3,
+            "traffic": "blocked"
+          },
+          {
+            "distance_m": 120.0,
+            "duration_s": 15.0,
+            "id": "3:4",
+            "road": {
+              "direction_allowed": true,
+              "matched": true,
+              "maxheight_m": null,
+              "maxweight_t": null,
+              "maxwidth_m": null,
+              "tags": {
+                "highway": "residential",
+                "surface": "asphalt",
+                "width": "4"
+              },
+              "way_id": 13,
+              "width_m": 4.0
+            },
+            "source": 3,
+            "target": 4,
+            "traffic": "blocked"
+          }
+        ],
+        "warnings": [
+          "Mapped width is not proof of usable clearance; turning, obstructions and node restrictions are not modeled."
+        ]
+      }
+    ],
+    "classical_route": null,
+    "classical_runtime_ms": 0,
+    "fallback_route": null,
+    "scenario": {
+      "overrides": {
+        "1:2": "blocked",
+        "1:3": "blocked",
+        "2:4": "blocked",
+        "3:4": "blocked"
+      },
+      "seed": 0
+    },
+    "scope": "Best among OSRM candidates; feasibility checks known restrictions only.",
+    "status": "no_feasible_route",
+    "traffic_source": "simulated"
+  },
+  "status_code": 200
+}

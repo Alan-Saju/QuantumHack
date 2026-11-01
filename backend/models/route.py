@@ -11,6 +11,33 @@ class Model(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
 
 
+class APIError(Model):
+    code: str
+    message: str
+    fields: list[str] | None = None
+
+
+class ErrorResponse(Model):
+    error: APIError
+
+
+class HealthResult(Model):
+    status: Literal["ok"]
+    routing_readiness: Literal["not_checked"]
+    traffic_source: Literal["simulated"]
+
+
+class ReadinessResult(Model):
+    osrm: Literal["available", "unavailable"]
+    road_attributes: Literal["loaded", "not_configured", "invalid"]
+    probe: str
+
+
+class MapConfig(Model):
+    tile_url: str
+    tile_attribution: str
+
+
 class Location(Model):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)

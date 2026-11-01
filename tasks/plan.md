@@ -1,7 +1,9 @@
 # Implementation Plan: Two-developer workflow
 
 Status: Shared baseline and API contracts implemented on `codex/shared-baseline`.
-Independent runners, test separation, CI and the two-person handoff remain planned.
+Independent runners, test separation, CI configuration and handoff documentation
+are implemented. Hosted CI execution, developer confirmations, reviewed integration
+and real OSRM verification remain pending.
 Review: [draft pull request #1](https://github.com/Alan-Saju/QuantumHack/pull/1).
 Date: 1 November 2026
 

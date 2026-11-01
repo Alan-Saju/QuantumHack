@@ -42,7 +42,7 @@ browser regression suite also passes with shared synthetic fixtures. Two
 isolated test checkouts successfully created separate task branches from
 the same revision. Each developer still needs to confirm their own setup.
 
-## Reproduce the baseline locally
+## Backend-only setup
 
 Use Python 3.14 and Node.js 22 or newer; the baseline was verified with
 Python 3.14.4 and Node.js 26.1.0. Run from the repository root:
@@ -50,17 +50,58 @@ Python 3.14.4 and Node.js 26.1.0. Run from the repository root:
 ```powershell
 python -m venv qiskit-env
 .\qiskit-env\Scripts\python.exe -m pip install --only-binary=:all: -r requirements.txt
-npm.cmd --prefix frontend ci --ignore-scripts
-npm.cmd --prefix frontend run build
 .\qiskit-env\Scripts\python.exe -m pytest -q
-npm.cmd --prefix frontend test
 .\qiskit-env\Scripts\python.exe -m scripts.export_contracts --check
 ```
 
-At this baseline the asset-serving Python test requires the frontend build.
-Backend-only testing without a frontend build is still a separate planned
-task. The frontend also still uses FastAPI to run; frontend-only mock mode
-is not implemented. Docker is unnecessary for the unit and mocked API tests.
+Python tests inject temporary test assets through
+`create_app(frontend_dist=...)` and require neither Node, frontend build output,
+nor Docker. The API preserves setup instructions at `/` if the real build is absent.
+Start just the API with:
+
+```powershell
+.\qiskit-env\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+## Frontend-only setup
+
+Only Node.js 22 or newer is required for mock development:
+
+```powershell
+npm.cmd --prefix frontend ci --ignore-scripts
+npm.cmd --prefix frontend run dev:mock
+```
+
+Open `http://127.0.0.1:5173/`. Source changes take effect on page reload; no
+build step, Python process or Docker engine is needed. A persistent
+**Synthetic demo data** banner identifies mock mode. Routes are fixed
+contract examples and do not follow changed coordinates. Basemap tiles still
+require internet. Select an error scenario before restarting the runner:
+
+```powershell
+$env:MOCK_SCENARIO = 'service-failure'
+npm.cmd --prefix frontend run dev:mock
+```
+
+Available scenarios: `success`, `no-route`, `rejected`, `service-failure`.
+Run `npm.cmd --prefix frontend test` for unit/runner checks and
+`npm.cmd --prefix frontend run build` for the distributable map assets.
+To integrate with a running backend instead:
+
+```powershell
+$env:PORT = '5174'
+$env:BACKEND_TARGET = 'http://127.0.0.1:8001'
+npm.cmd --prefix frontend run dev
+```
+
+Default frontend port is 5173 and backend target is `http://127.0.0.1:8000`.
+Both runners bind to loopback; backend targets must be loopback HTTP origins.
+Browser API calls stay relative to `/api/`. Live mode forwards response bodies
+and statuses; connection failures return `BACKEND_UNAVAILABLE` (503), never
+synthetic routes. Use `Remove-Item Env:PORT`, `Remove-Item Env:BACKEND_TARGET`
+and `Remove-Item Env:MOCK_SCENARIO` to clear variables after changing modes.
+
+## Combined app and browser verification
 
 To run the combined map:
 
@@ -72,8 +113,32 @@ Open `http://127.0.0.1:8000/`. Real routes require local OSRM and a matching
 road-attribute index; follow README.md for map download and preparation.
 Without OSRM, the map reports unavailable routing rather than using fixtures.
 
-For browser tests, install Microsoft Edge and keep the app running in another
-terminal, then run:
+For repeatable integration checks, install Microsoft Edge on Windows, build
+the frontend, and run:
+
+```powershell
+npm.cmd --prefix frontend run build
+npm.cmd --prefix frontend run test:integration
+```
+
+This starts a temporary FastAPI process on an available port, verifies real
+built assets and map interactions, then runs all four mock scenarios in
+Node-only servers. Every temporary process is closed afterward. Routes and
+tiles are synthetic in these tests; they do not certify real OSRM readiness.
+Screenshots go to ignored `frontend/test-results/`.
+
+On Linux, or to use downloaded Chromium instead of Edge:
+
+```powershell
+cd frontend
+npx --no-install playwright-core install chromium
+cd ..
+$env:BROWSER_CHANNEL = 'chromium'
+npm.cmd --prefix frontend run test:integration
+```
+
+Set `PYTHON` to a Python executable if it is neither in `qiskit-env` nor on PATH.
+To test an already running app instead, set `APP_URL` and run:
 
 ```powershell
 npm.cmd --prefix frontend run test:browser
@@ -119,7 +184,37 @@ Commit source, tests and lockfiles. Do not commit `qiskit-env/`,
 `frontend/node_modules/`, `frontend/dist/`, screenshots, `.env` files,
 credentials, downloaded maps or generated routing graphs.
 
-Automated pull-request checks and branch protection are not configured by
-this baseline. Until CI is added, include local check results in each PR.
+## Automated checks and integration handoff
+
+`.github/workflows/checks.yml` defines backend, frontend, contracts and browser
+jobs for pull requests, pushes to `main` and manual runs. Python is 3.14 and
+Node is pinned to 22.14.0. Dependency installation uses the Python pins and npm
+lockfile with npm install scripts disabled. Backend and contract jobs install
+no frontend dependencies. Browser CI installs the pinned Playwright Chromium
+and runs against a temporary app; no OSRM download or Docker service is needed.
+An actual hosted run and branch protection remain pending until this workflow
+is pushed and reviewed. Include local results in the PR meanwhile.
+
+Before handing off a dependency change, update `requirements.txt` or
+`frontend/package-lock.json` with the appropriate package manager, reinstall
+from the pinned files, and rerun the affected checks. API changes also require
+the contract export and shared fixture checks described above.
+
+For the two-person integration checkpoint:
+
+1. Each developer confirms their own clone and the relevant setup path.
+2. Backend owner runs Python tests and contract checks on their task branch;
+   frontend owner runs frontend tests, build and mock runner on theirs.
+3. Review both PRs, update them against the same baseline and resolve conflicts.
+4. After combining reviewed changes, run all four check commands and browser
+   integration checks. Confirm live mode with the intended local API port.
+5. Start Docker Desktop and the prepared service with
+   `docker compose -f osrm/docker-compose.yml up -d`, run
+   `.\qiskit-env\Scripts\python.exe -m scripts.check_osrm`, and inspect the
+   combined map with real routes. Download/preprocess only for first setup or
+   intentional data/profile updates. Follow README.md for initial preparation.
+
+Local synthetic checks do not count as two-person review, a hosted Actions
+run, or real OSRM verification; track those separately in `tasks/todo.md`.
 Access verification does not prove the other person's checkout is set up;
 that person must clone and run these steps to confirm their environment.

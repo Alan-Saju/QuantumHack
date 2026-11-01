@@ -18,22 +18,28 @@ Unchecked items still require implementation or verification.
 
 - [x] Task 2: Export and check the API contract.
 - [x] Add shared, validated synthetic response fixtures and use them in browser tests.
-- [ ] Task 3: Add explicit frontend mock mode and configurable live forwarding.
-- [ ] Verify mock mode needs neither Python nor Docker and is visibly labeled.
-- [ ] Task 4: Make backend tests independent of the frontend build.
-- [ ] Retain built-asset coverage in browser integration checks.
+- [x] Task 3: Add explicit frontend mock mode and configurable live forwarding.
+- [x] Verify mock mode needs neither Python nor Docker and is visibly labeled.
+- [x] Task 4: Make backend tests independent of the frontend build.
+- [x] Retain built-asset coverage in browser integration checks.
 
 ## Checkpoint: independent development
 
-- [ ] Frontend development works with the backend stopped.
-- [ ] Backend tests work without frontend dependencies or generated assets.
-- [ ] Live mode reports failures without substituting fixtures.
+- [x] Frontend development works with the backend stopped.
+- [x] Backend tests work without frontend dependencies or generated assets.
+- [x] Live mode reports failures without substituting fixtures.
 
-- [ ] Task 5: Add backend, frontend, contract and browser pull-request checks.
+- [x] Task 5: Add backend, frontend, contract and browser pull-request checks.
 - [ ] Verify checks locally and inspect an authorized GitHub Actions run.
-- [ ] Task 6: Complete developer setup and integration documentation.
+- [x] Task 6: Complete developer setup and integration documentation.
 
 ## Checkpoint: integrated collaboration
+
+Local verification on 1 November 2026: 35 Python tests, 13 frontend tests,
+frontend build, contract drift check, built-app browser checks and all four
+mock browser scenarios pass. Python tests and contracts also passed from a
+temporary copy containing no frontend folder. The checks below require
+publication, human review or live Docker/data verification.
 
 - [ ] Review and combine changes from two independent branches.
 - [ ] All automated checks pass after integration.

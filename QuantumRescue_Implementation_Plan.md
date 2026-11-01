@@ -13,8 +13,9 @@ The first usable demonstration must show real road routes on a map.
 and [its checklist](tasks/todo.md) to enable frontend/map and backend/OSRM
 work in separate checkouts. A tested baseline branch, CONTRIBUTING.md,
 the generated API contract and validated shared fixtures are implemented.
-Frontend-only mock mode, independent backend tests and pull-request CI
-remain planned. This does not alter the OSRM-and-map milestone priority.
+Frontend-only mock/live modes, independent backend tests and pull-request CI
+are implemented. An actual hosted CI run, two-person review/integration and
+live OSRM verification remain pending. This does not alter the OSRM-and-map milestone priority.
 
 ### Current implementation status
 

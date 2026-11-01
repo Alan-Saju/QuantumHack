@@ -4,11 +4,40 @@ Research prototype for ambulance route comparison in Kochi. OSRM supplies road-n
 
 Two developers can use the shared baseline and task branches described in
 [CONTRIBUTING.md](CONTRIBUTING.md). The generated [API contract and fixtures](contracts/README.md)
-define the common interface. Frontend-only mock mode and automated CI are later tasks.
+define the common interface. Frontend mock/live runners, independent backend tests,
+and pull-request checks are implemented; see the setup paths below.
 
 The backend and interactive Leaflet map are implemented. The revised [implementation plan](QuantumRescue_Implementation_Plan.md) prioritizes **local OSRM and the map as the first milestone**. The Kochi basemap loads, and browser tests verify route drawing and interactions with mocked routing responses. Real local-OSRM routes still require Docker and map preparation on the host. Further scoring integration and quantum optimization follow live verification of that first milestone.
 
 ## Quick start
+
+For frontend work without Python or Docker:
+
+```powershell
+npm.cmd --prefix frontend ci --ignore-scripts
+npm.cmd --prefix frontend run dev:mock
+```
+
+Open `http://127.0.0.1:5173/`. Mock mode shows **Synthetic demo data** and
+fixed shared examples. Set `MOCK_SCENARIO` to `success`, `no-route`, `rejected`,
+or `service-failure` to select a scenario. Basemap tiles require internet.
+For live forwarding, use `npm.cmd --prefix frontend run dev`; optional
+`PORT` and `BACKEND_TARGET` select the frontend port and local backend origin.
+Defaults are 5173 and `http://127.0.0.1:8000`. Live failures never use fixtures.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for independent setup and handoff steps.
+
+Backend-only checks need no npm install or frontend build:
+
+```powershell
+.\qiskit-env\Scripts\python.exe -m pytest -q
+.\qiskit-env\Scripts\python.exe -m scripts.export_contracts --check
+```
+
+After building the combined frontend, run
+`npm.cmd --prefix frontend run test:integration` to start a temporary API and check built assets, map
+interactions and all mock scenarios. This needs Python and Edge on Windows
+(or installed Playwright Chromium). Four independent GitHub Actions jobs
+run these checks on pull requests; hosted execution awaits publication.
 
 Commands below run in PowerShell from the repository root. The existing environment uses Python 3.14.4; dependencies were installed and tested there. For a new environment:
 

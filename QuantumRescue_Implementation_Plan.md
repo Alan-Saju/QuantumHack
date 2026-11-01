@@ -9,15 +9,30 @@
 interactive map before extending emergency scoring or quantum optimization.
 The first usable demonstration must show real road routes on a map.
 
+**Two-developer workflow:** Follow [the collaboration implementation plan](tasks/plan.md)
+and [its checklist](tasks/todo.md) to enable frontend/map and backend/OSRM
+work in separate checkouts. A tested baseline branch, CONTRIBUTING.md,
+the generated API contract and validated shared fixtures are implemented.
+Frontend-only mock mode, independent backend tests and pull-request CI
+remain planned. This does not alter the OSRM-and-map milestone priority.
+
 ### Current implementation status
 
 - Python environment, OSRM preparation scripts, an OSM attribute extractor,
   classical scoring/validation, and a FastAPI routing API are implemented.
 - The synthetic offline demonstration has run successfully. This verifies
   the demo pipeline, not routing on the real Kochi road network.
-- Local OSRM preprocessing and live routing have not yet been verified;
-  Docker and a suitable map extract are prerequisites.
-- No map frontend, QUBO model, or QAOA integration has been implemented.
+- Docker commands now run on the developer's machine. The Geofabrik
+  download URL has been corrected to Southern Zone, including Kerala.
+  Local OSRM preprocessing and live routing remain unverified until the
+  map download, preparation and smoke check complete.
+- The Leaflet map frontend is implemented and served by FastAPI. Real OSM
+  basemap tiles load. Browser checks verify route drawing, input changes,
+  inspection, failures and responsive layouts with mocked routing responses.
+- A launch script builds the map and optionally prepares OSRM, extracts
+  attributes and runs the live smoke check. Real local-OSRM verification
+  remains pending map preparation and a successful live smoke check.
+- No QUBO model or QAOA integration has been implemented.
 
 Retain the existing backend work. The next implementation effort is Phase 1
 below; do not advance to new optimization work until its acceptance checks pass.
@@ -135,7 +150,9 @@ moving to the next; an offline fixture alone does not complete Phase 1.
 
 1. Reuse the project directory, Python environment and existing OSRM scripts.
 2. Install/start Docker Desktop with Linux containers and verify the engine.
-3. Obtain a small Kochi OSM extract, or use the full Kerala extract if needed.
+3. Obtain a small Kochi OSM extract, or use Geofabrik's Southern Zone
+   extract (which includes Kerala) if needed. Geofabrik has no Kerala-only
+   subregion download; the legacy `-DownloadKerala` flag downloads Southern Zone.
 4. Place it at `osrm/data/map.osm.pbf` and run `osrm/prepare.ps1`.
 5. Prepare OSRM using extraction, partitioning and customization, then start
    the local service with the existing conservative car-based Lua profile.
@@ -203,7 +220,7 @@ quantum-rescue/
 Useful references: - OSRM API:
 https://project-osrm.org/docs/v5.24.0/api/ - OSRM backend:
 https://github.com/Project-OSRM/osrm-backend - Geofabrik Kerala extract:
-https://download.geofabrik.de/asia/india/kerala.html
+https://download.geofabrik.de/asia/india/southern-zone.html
 
 **Deliverable:** A working map backed by local OSRM and FastAPI, using
 real Kochi road geometry. Only after this is verified should Phase 2 resume.
@@ -555,11 +572,11 @@ quantum-rescue/
 -   [ ] Route, Nearest and Table services pass a live Kochi smoke check.
 -   [ ] Alternative routes can be requested; a single valid result is handled.
 -   [ ] Backend returns real OSRM candidate GeoJSON without fixture substitution.
--   [ ] Map loads with attribution and origin/destination selection.
+-   [x] Map loads with attribution and origin/destination selection.
 -   [ ] Actual routes, distance and duration are displayed on the map.
 -   [ ] Changing an endpoint recalculates and redraws the routes.
--   [ ] No-route and service-failure states clear stale route results.
--   [ ] Frontend build and backend regression checks pass.
+-   [x] No-route and service-failure states clear stale route results (browser-tested with mocked responses).
+-   [x] Frontend build and backend regression checks pass.
 
 ### Subsequent milestones: intelligence and optimization
 

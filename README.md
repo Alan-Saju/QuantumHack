@@ -2,6 +2,10 @@
 
 Research prototype for ambulance route comparison in Kochi. OSRM supplies road-network routes; Python scores alternatives using road attributes, deterministic simulated congestion, and vehicle constraints.
 
+Two developers can use the shared baseline and task branches described in
+[CONTRIBUTING.md](CONTRIBUTING.md). The generated [API contract and fixtures](contracts/README.md)
+define the common interface. Frontend-only mock mode and automated CI are later tasks.
+
 The backend and interactive Leaflet map are implemented. The revised [implementation plan](QuantumRescue_Implementation_Plan.md) prioritizes **local OSRM and the map as the first milestone**. The Kochi basemap loads, and browser tests verify route drawing and interactions with mocked routing responses. Real local-OSRM routes still require Docker and map preparation on the host. Further scoring integration and quantum optimization follow live verification of that first milestone.
 
 ## Quick start

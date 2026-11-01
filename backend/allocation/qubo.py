@@ -1,10 +1,10 @@
 """Upper-triangular QUBO; one variable per retained dispatch or unserved choice."""
 from dataclasses import dataclass
 from itertools import product
-from math import asin, cos, radians, sin, sqrt
 
 from backend.models.route import Geometry, Model
 from backend.allocation.scenario import AllocationRequest
+from backend.allocation.travel import TravelLeg, synthetic_leg
 
 
 class Choice(Model):
@@ -15,6 +15,7 @@ class Choice(Model):
     transport_minutes: float = 0
     cost: float
     legs: list[Geometry] = []
+    leg_details: list[TravelLeg] = []
 
 
 def compatible(plan):
@@ -48,21 +49,17 @@ def valid_bits(problem, bits):
             and compatible(selected))
 
 
-def synthetic_leg(start, end):
-    a, b = radians(start.latitude), radians(end.latitude)
-    dlat, dlon = b - a, radians(end.longitude - start.longitude)
-    distance_km = 12742 * asin(sqrt(min(1, sin(dlat / 2)**2 + cos(a) * cos(b) * sin(dlon / 2)**2)))
-    return distance_km / 30 * 60, Geometry(coordinates=[(start.longitude, start.latitude), (end.longitude, end.latitude)])
-
-
 def build_problem(scenario: AllocationRequest, leg_provider=None) -> Problem:
+    if scenario.travel_source == 'osrm' and leg_provider is None:
+        raise ValueError('OSRM mode requires an explicit road travel provider')
     leg = leg_provider or synthetic_leg
     cache = {}
 
-    def travel(start, end):
-        key = (start.latitude, start.longitude, end.latitude, end.longitude)
+    def travel(start, end, vehicle):
+        key = (start.latitude, start.longitude, end.latitude, end.longitude,
+               vehicle.width_m, vehicle.height_m, vehicle.weight_t)
         if key not in cache:
-            cache[key] = leg(start, end)
+            cache[key] = leg(start, end, vehicle)
         return cache[key]
 
     full_groups = []
@@ -72,13 +69,14 @@ def build_problem(scenario: AllocationRequest, leg_provider=None) -> Problem:
             if (not ambulance.available or not hospital.available_slots
                     or incident.requires not in ambulance.capabilities or incident.requires not in hospital.capabilities):
                 continue
-            response, transport = travel(ambulance, incident), travel(incident, hospital)
+            response, transport = travel(ambulance, incident, ambulance), travel(incident, hospital, ambulance)
             if response is None or transport is None:
                 continue
             group.append(Choice(incident_id=incident.id, ambulance_id=ambulance.id, hospital_id=hospital.id,
-                                response_minutes=response[0], transport_minutes=transport[0],
-                                cost=incident.severity * response[0] + scenario.transport_weight * transport[0],
-                                legs=[response[1], transport[1]]))
+                                response_minutes=response.cost.travel_time_s / 60,
+                                transport_minutes=transport.cost.travel_time_s / 60,
+                                cost=(incident.severity * response.cost.total + scenario.transport_weight * transport.cost.total) / 60,
+                                legs=[response.geometry, transport.geometry], leg_details=[response, transport]))
         full_groups.append(sorted(group, key=lambda c: (c.cost, c.ambulance_id, c.hospital_id)))
     unserved_weight = 1 + sum(max((c.cost for c in group), default=0) for group in full_groups)
     for incident, group in zip(scenario.incidents, full_groups):

@@ -6,15 +6,24 @@ priority. Existing routing and collaboration infrastructure remain supported.
 ## Objective and acceptance
 
 An operator places three ambulances and three incidents manually around Kochi,
-selects a network of three or five fixed synthetic hospital sites, then allocates
+uses the three fixed user-supplied hospital locations in the Kochi UI, then allocates
 ambulance + incident + hospital receiving slot in a
 single dispatch round. Success means compatible resources, no double booking,
 explicit unserved incidents and independently validated solver outputs. Routes
 supply travel costs; nearest distance alone does not decide allocation.
-Research demonstration only; locations, capabilities, capacities and severity
-weights are synthetic and are not authoritative medical dispatch guidance.
+The three hospital names/coordinates are user-supplied. Resource availability,
+capabilities, capacities and severity weights remain demo assumptions.
 
 ## Modules and order
+
+Current comparison UI: Optimize Allocation submits one QAOA-plus-exact request.
+Classical/QAOA buttons on the map switch between saved solver plans. The service
+marks independently validated QAOA output with `quantum.plan_valid`, including
+valid samples worse than Classical. The UI may display those samples on request;
+the initial recommendation still follows the existing best-plan policy. Invalid
+or unavailable quantum output has no selectable QAOA plan. Switching updates
+the complete allocation view, fleet and ambulance trip data while preserving the
+original scenario snapshot and capture time; edits invalidate both saved plans.
 
 1. Scenario models and synthetic seed -> cost/candidate generation.
 2. Candidate generation -> full exact allocation baseline and QUBO formulation.
@@ -32,7 +41,8 @@ the incident capability. Each ambulance and slot can be used at most once.
 
 A binary variable x_k selects a compatible (ambulance, incident, hospital) choice.
 Each incident also has an explicit unserved choice. Cost for a served choice is
-severity * response_minutes + transport_weight * transport_minutes. Unserved
+severity * response_cost_minutes + transport_weight * hospital_leg_cost_minutes
+(synthetic mode uses travel minutes; OSRM mode includes road preferences). Unserved
 cost is severity * M, with M greater than the sum of all maximum served costs.
 This prioritizes total severity served, then travel cost; it is not a clinical
 triage policy. Infeasibility is visible as unserved incidents.
@@ -63,8 +73,13 @@ Synthetic mode is the default and uses labelled geometric travel estimates and
 straight connectors, not road geometry. Live OSRM mode generates actual route
 legs for ambulance -> incident and incident -> hospital and uses their travel
 times. Unreachable legs remove choices. Upstream failure returns an error and
-never silently substitutes synthetic travel. Existing road scoring remains in
-the route inspector; allocation does not claim road suitability validation.
+never silently substitutes synthetic travel. Both legs now check known road
+restrictions against the assigned ambulance's width/height/weight and select
+the lowest-cost feasible returned route. Road cost is `T + 0.5*N + 0.3*S + 0.2*U`;
+the [cost specification](tasks/road-attribute-cost-proposal.md) defines the
+time-weighted exposures. The allocation coefficients use those costs in minutes,
+while displayed response/transport times remain ETA values. Known checks do not
+certify road suitability. Synthetic mode applies no attribute-based penalties.
 
 ## Configuration and execution
 
@@ -82,9 +97,13 @@ Keep service local; a production concurrent job queue is a later milestone.
 Manual demo workflow: choose A1-A3 or I1-I3 above the map and click to place it;
 the placement target advances to the next resource. Markers for ambulances and
 incidents are draggable. Coordinate inputs provide an equivalent keyboard path.
-Map and submitted coordinates use the same six-decimal precision. Hospital sites
-cannot be moved in the UI. `GET /api/allocation/demo?hospital_count=3|5` loads a
-fixed hospital preset; changing the network preserves manually placed resources.
+Map and submitted movable coordinates use the same six-decimal precision.
+Hospital sites retain their supplied precision and cannot be moved in the UI.
+The current network is Sunrise Hospital, Gautham Hospital and Aster Medicity.
+The API retains the legacy five-site extension, but it is not offered in the UI.
+Both maps are bounded to latitude 9.85–10.10, longitude 76.20–76.40; allocation
+validates resource coordinates against this operating rectangle. It includes
+all supplied hospitals and is not an administrative boundary polygon.
 Incident care requirements and severity, ambulance availability, and hospital
 slot availability remain editable allocation criteria. Weather and traffic are
 future additions after this manual setup and allocation workflow is established.
@@ -136,7 +155,8 @@ desktop/mobile browser flow. The seeded 10-evaluation synthetic demonstration
 used 10 qubits (16 full choices), served all three incidents and sampled the full
 exact optimum, objective 20.3809893942, with feasible probability approximately
 7.58%. This is one small seeded simulation, not evidence of quantum advantage.
-Real OSRM allocation and hosted CI execution remain unverified.
+Real OSRM allocation was initially unverified; the road-cost checkpoint below
+records its completed local verification. Hosted CI execution remains unverified.
 The actual server on port 8000 was refreshed after diagnosing an older running
 backend that returned 404 for both allocation endpoints. Both endpoints and a
 five-hospital QAOA request have now been checked on that running server. Browser
@@ -150,3 +170,44 @@ Quantum implementation references:
 
 The implementation constructs the RZ/RZZ cost layers and RX mixer explicitly,
 so the QUBO-to-Ising coefficients and bit order can be independently tested.
+
+### Road-cost checkpoint
+
+Shared scoring and allocation road checks are implemented, with vehicle-aware
+response/hospital legs, raw exposures, separate ETA, cost/coverage details and
+strict-width/simulated-traffic controls. All 71 backend tests, 13 frontend tests,
+contract checks, builds and route/mock/GPS/allocation browser suites pass.
+Real local OSRM with the loaded Kochi index serves all three demo incidents at
+objective 51.9153416667 minutes-equivalent. QAOA executes on the revised costs;
+the selected plan matches the full exact objective. Strict width leaves all
+three incidents unserved because mapped widths are missing. Real browser checks
+confirm the display on desktop/mobile without page errors. These are local
+demo observations; hosted CI and calibrated operational validation remain pending.
+
+### Supplied hospital network and Kochi scope
+
+The current UI uses Sunrise Hospital (10.025185, 76.338884), Gautham Hospital
+(9.952000, 76.2990001) and Aster Medicity (10.0469447, 76.3352506), with exact
+user-supplied coordinates. Capabilities and receiving slots remain demo values.
+Map bounds are served by `/api/map-config`; both maps constrain pan/zoom-out,
+and allocation validates placements inside the Kochi operating rectangle.
+All 75 backend tests and 18 frontend tests pass, along with the route/mock/GPS
+and updated allocation browser checks, including outside-area rejection and
+minimum zoom. Actual browser checks confirm pan limits and desktop/mobile layout.
+
+In the current local OSRM data Sunrise/Aster are about 16 m/15 m from routable
+roads, but the supplied Gautham point is about 4.5 km away. Its coordinates are
+preserved, and live allocation excludes that destination. Consequently the
+current demo road request serves two incidents and leaves I2 unserved; this
+supersedes the earlier three-served observation for the old synthetic sites.
+
+### Kerala map scope
+
+The latest user instruction expands both maps and allocation placement to the
+entire Kerala region. The operating rectangle is latitude 8.15–12.90 and
+longitude 74.40–77.80, including a margin around the state's geographic extent.
+This supersedes the Kochi-only placement restriction above, while keeping the
+three supplied hospital sites. The road-attribute index remains limited to Kochi;
+other areas explicitly retain unknown attributes and uncertainty penalties.
+No statewide road-attribute coverage or exact administrative polygon is claimed.
+Bounds are informed by the [Kerala government geographic summary](https://www.kerala.gov.in/index.php/subdetail/NTM1ODMxNzQuNDg%3D/MjA0ODc2ODQuMzY%3D).

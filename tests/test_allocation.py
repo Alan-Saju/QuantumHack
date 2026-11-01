@@ -8,6 +8,38 @@ from backend.allocation.scenario import demo_scenario
 from backend.allocation.qubo import build_problem, exact_plan, valid_bits
 
 
+def test_named_kochi_hospital_locations_and_operating_area():
+    with TestClient(app) as client:
+        hospitals = client.get('/api/allocation/demo').json()['hospitals']
+        assert [(h['name'], h['latitude'], h['longitude']) for h in hospitals] == [
+            ('Sunrise Hospital', 10.025185, 76.338884),
+            ('Gautham Hospital', 9.952000, 76.2990001),
+            ('Aster Medicity', 10.0469447, 76.3352506),
+        ]
+        bounds = client.get('/api/map-config').json()['operating_bounds']
+        for h in hospitals:
+            assert bounds[0][0] <= h['latitude'] <= bounds[1][0]
+            assert bounds[0][1] <= h['longitude'] <= bounds[1][1]
+
+
+@pytest.mark.parametrize('collection', ['ambulances', 'incidents', 'hospitals'])
+def test_allocation_rejects_locations_outside_kerala_area(collection):
+    with TestClient(app) as client:
+        scenario = demo_scenario().model_dump()
+        scenario[collection][0].update(latitude=14.0, longitude=78.0)
+        response = client.post('/api/allocation/optimize', json=scenario)
+        assert response.status_code == 422
+
+
+@pytest.mark.parametrize('latitude,longitude', [(8.5241, 76.9366), (11.2588, 75.7804), (12.4996, 74.9869)])
+def test_allocation_accepts_kerala_locations_outside_kochi(latitude, longitude):
+    with TestClient(app) as client:
+        scenario = demo_scenario().model_dump()
+        scenario['ambulances'][0].update(latitude=latitude, longitude=longitude)
+        response = client.post('/api/allocation/optimize', json=scenario)
+        assert response.status_code == 200
+
+
 def test_demo_allocates_three_without_double_booking():
     problem = build_problem(demo_scenario())
     plan = exact_plan(problem.full_groups)

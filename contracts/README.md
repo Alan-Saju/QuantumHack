@@ -59,3 +59,37 @@ The persistent banner and route status identify synthetic results.
 backend response statuses and bodies. A connection failure returns 503 with
 `error.code: BACKEND_UNAVAILABLE`, a runner error rather than a FastAPI response.
 Live mode never substitutes fixtures. Both modes bind only to `127.0.0.1`.
+
+## Road-cost additions
+
+`quantum.plan_valid` is set by independent allocation-service validation. A
+completed QAOA sample may be valid and worse than the full exact optimum; in that
+case `quantum.assignments` is preserved for comparison, while the recommended
+top-level `assignments` still contains the Classical plan. The UI runs both
+solvers once with `solver.algorithm: qaoa` and switches locally between
+`exact_assignments` and the validated `quantum.assignments`. It uses the same
+scenario snapshot/time in both views. No extra optimization request occurs.
+Unavailable or invalid quantum results cannot be displayed as a QAOA plan.
+
+Allocation ambulances accept positive `width_m`, `height_m`, `weight_t` with
+demo defaults 2.4, 2.8, 3.5. Optional `require_known_width` and `consider_traffic`
+default to false. `road_scenario` accepts the same bounded seed/overrides object
+as route requests; blocked segments are excluded regardless of traffic scoring.
+These fields are applied only in OSRM mode. Synthetic responses have no road
+coverage or attribute penalties and remain independent of road-index loading.
+
+Existing `legs`, `response_minutes`, `transport_minutes`, and `cost` remain.
+Assignment `leg_details` follows response/hospital order and adds each leg's
+geometry, cost, road coverage and summarized warnings. Coverage includes segment
+counts and seconds of unknown width/surface. `traffic_source` is `none` or
+`simulated`; no live traffic feed is implied. Missing width/surface contributes
+uncertainty in permissive mode; strict width excludes the route.
+
+Cost adds `narrowness_exposure_s`, `surface_exposure_s`,
+`uncertainty_exposure_s` and `uncertainty_penalty_s`. `suitability_penalty_s`
+now means 0.5 times narrowness exposure, replacing the old per-edge unknown-width
+penalty; `risk_penalty_s` is 0.3 times surface exposure, a preference rather
+than measured medical risk. `weights.uncertainty` defaults to one.
+Default total is `T + 0.5*N + 0.3*S + 0.2*U`; ETA remains `travel_time_s`.
+Route responses also include `road_coverage`. This changes scoring/ranking
+intentionally; regenerated schemas and fixtures describe the current behavior.

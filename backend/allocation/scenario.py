@@ -2,10 +2,26 @@ from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
-from backend.models.route import Location, Model
+from backend.models.route import Location, Model, Positive, Scenario
+from backend.models.geography import in_operating_area
 
 Capability = Literal['general', 'cardiac', 'trauma']
 Identifier = Annotated[str, Field(min_length=1, max_length=40, pattern=r'^[A-Za-z0-9_-]+$')]
+VehicleType = Literal['traveller', 'omini']
+
+
+class VehicleProfile(Model):
+    label: str
+    width_m: Positive
+    height_m: Positive
+    weight_t: Positive
+
+
+# Editable research assumptions, not manufacturer or certified fleet dimensions.
+VEHICLE_PROFILES = {
+    'traveller': VehicleProfile(label='Traveller', width_m=2.4, height_m=2.8, weight_t=3.5),
+    'omini': VehicleProfile(label='Omini', width_m=1.6, height_m=2.0, weight_t=1.5),
+}
 
 
 class Resource(Location):
@@ -16,6 +32,22 @@ class Resource(Location):
 
 class Ambulance(Resource):
     available: bool = True
+    vehicle_type: VehicleType = 'traveller'
+    width_m: Positive = 2.4
+    height_m: Positive = 2.8
+    weight_t: Positive = 3.5
+
+    @model_validator(mode='before')
+    @classmethod
+    def profile_dimensions(cls, data):
+        if isinstance(data, dict):
+            vehicle_type = data.get('vehicle_type', 'traveller')
+            if isinstance(vehicle_type, str) and vehicle_type in VEHICLE_PROFILES:
+                data = dict(data)
+                profile = VEHICLE_PROFILES[vehicle_type]
+                for field in ('width_m', 'height_m', 'weight_t'):
+                    data.setdefault(field, getattr(profile, field))
+        return data
 
 
 class Hospital(Resource):
@@ -43,6 +75,9 @@ class AllocationRequest(Model):
     incidents: list[Incident] = Field(min_length=1, max_length=3)
     travel_source: Literal['synthetic', 'osrm'] = 'synthetic'
     transport_weight: float = Field(default=1, ge=0, le=10)
+    require_known_width: bool = False
+    consider_traffic: bool = False
+    road_scenario: Scenario = Field(default_factory=Scenario)
     solver: SolverOptions = Field(default_factory=SolverOptions)
 
     @model_validator(mode='after')
@@ -50,6 +85,8 @@ class AllocationRequest(Model):
         for collection in (self.ambulances, self.hospitals, self.incidents):
             if len({item.id for item in collection}) != len(collection):
                 raise ValueError('Resource identifiers must be unique within each collection')
+            if any(not in_operating_area(item.latitude, item.longitude) for item in collection):
+                raise ValueError('Resource locations must stay inside the Kerala operating area')
         return self
 
 
@@ -58,12 +95,13 @@ def demo_scenario(hospital_count: int = 3) -> AllocationRequest:
         ambulances=[
             Ambulance(id='A1', name='North ALS unit', latitude=9.994, longitude=76.294, capabilities=['general', 'cardiac', 'trauma']),
             Ambulance(id='A2', name='Central ALS unit', latitude=9.975, longitude=76.285, capabilities=['general', 'cardiac', 'trauma']),
-            Ambulance(id='A3', name='South BLS unit', latitude=9.952, longitude=76.299, capabilities=['general']),
+            Ambulance(id='A3', name='South BLS unit', latitude=9.952, longitude=76.299, capabilities=['general'], vehicle_type='omini'),
         ],
         hospitals=[
-            Hospital(id='H1', name='North Trauma Centre (demo)', latitude=10.006, longitude=76.307, capabilities=['general', 'trauma']),
-            Hospital(id='H2', name='Central Cardiac Centre (demo)', latitude=9.982, longitude=76.303, capabilities=['general', 'cardiac']),
-            Hospital(id='H3', name='South General Hospital (demo)', latitude=9.958, longitude=76.310, capabilities=['general']),
+            # Names/coordinates supplied by the user; capabilities/slots remain demo assumptions.
+            Hospital(id='H1', name='Sunrise Hospital', latitude=10.025185, longitude=76.338884, capabilities=['general', 'trauma']),
+            Hospital(id='H2', name='Gautham Hospital', latitude=9.952000, longitude=76.2990001, capabilities=['general', 'cardiac']),
+            Hospital(id='H3', name='Aster Medicity', latitude=10.0469447, longitude=76.3352506, capabilities=['general']),
         ],
         incidents=[
             Incident(id='I1', name='Trauma incident', latitude=9.991, longitude=76.300, severity=3, requires='trauma'),

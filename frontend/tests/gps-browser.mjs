@@ -16,7 +16,8 @@ try {
   await page.route('https://tile.openstreetmap.org/**', route => route.abort());
   let lastBody;
   await page.route('**/api/emergency/route', async route => {
-    lastBody = route.request().postDataJSON();
+    const body = route.request().postDataJSON();
+    if (body.ambulance.latitude === Number(await page.locator('#origin-lat').inputValue())) lastBody = body;
     await route.continue();
   });
   await page.goto(url);

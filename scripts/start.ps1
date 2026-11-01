@@ -1,5 +1,8 @@
 param(
     [switch]$PrepareOSRM,
+    [switch]$BuildRoadIndex,
+    [switch]$BuildHospitalIndex,
+    [double[]]$RoadIndexBounds = @(76.20, 9.85, 76.40, 10.10),
     [Alias('DownloadMap')][switch]$DownloadKerala,
     [switch]$NoReload,
     [ValidateRange(1024, 65535)][int]$Port = 8000
@@ -26,10 +29,17 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Map build failed.' }
     if ($PrepareOSRM) {
         & (Join-Path $projectPath 'osrm\prepare.ps1') -DownloadKerala:$DownloadKerala
-        & $pythonPath -m scripts.build_road_index osrm/data/map.osm.pbf data/road_network/roads.json
+    }
+    if ($PrepareOSRM -or $BuildRoadIndex) {
+        & $pythonPath -m scripts.build_road_index osrm/data/map.osm.pbf data/road_network/roads.json --bounds @RoadIndexBounds
         if ($LASTEXITCODE -ne 0) { throw 'Road attribute extraction failed.' }
         & $pythonPath -m scripts.check_osrm
         if ($LASTEXITCODE -ne 0) { throw 'OSRM verification failed; the app has not been started.' }
+    }
+    $hospitalIndexPath = Join-Path $projectPath 'data\hospitals\hospitals.json'
+    if ($BuildHospitalIndex -or ((Test-Path -LiteralPath 'osrm\data\map.osm.pbf') -and -not (Test-Path -LiteralPath $hospitalIndexPath))) {
+        & $pythonPath -m scripts.build_hospital_index osrm/data/map.osm.pbf $hospitalIndexPath
+        if ($LASTEXITCODE -ne 0) { throw 'Hospital location extraction failed.' }
     }
     $indexPath = Join-Path $projectPath 'data\road_network\roads.json'
     if (-not $env:ROAD_INDEX_PATH -and (Test-Path -LiteralPath $indexPath)) {

@@ -6,6 +6,8 @@ from pydantic import Field
 from backend.models.route import Model
 from backend.allocation.qubo import Choice, build_problem, compatible, exact_plan
 from backend.allocation.qaoa import QuantumResult, solve_qaoa
+from backend.allocation.travel import RoadTravel
+from backend.intelligence.road_analyzer import RoadIndex
 
 
 class QuboTerm(Model):
@@ -16,6 +18,7 @@ class QuboTerm(Model):
 
 class AllocationResult(Model):
     travel_source: Literal['synthetic', 'osrm']
+    traffic_source: Literal['none', 'simulated'] = 'none'
     status: Literal['complete', 'partial']
     selected_solver: Literal['exact', 'qaoa']
     selection_reason: str
@@ -37,15 +40,13 @@ class AllocationResult(Model):
     warnings: list[str] = Field(default_factory=list)
 
 
-def allocate(scenario, client=None):
-    def osrm_leg(start, end):
-        routes = client.routes(start, end)
-        if not routes:
-            return None
-        route = min(routes, key=lambda r: r.duration_s)
-        return route.duration_s / 60, route.geometry
-
-    problem = build_problem(scenario, osrm_leg if scenario.travel_source == 'osrm' else None)
+def allocate(scenario, client=None, roads=None):
+    road_travel = None
+    if scenario.travel_source == 'osrm':
+        if client is None:
+            raise ValueError('OSRM mode requires a routing client')
+        road_travel = RoadTravel(scenario, client, roads if roads is not None else RoadIndex({}))
+    problem = build_problem(scenario, road_travel)
     start = perf_counter()
     exact = list(exact_plan(problem.full_groups))
     reduced = list(exact_plan(problem.groups))
@@ -59,9 +60,10 @@ def allocate(scenario, client=None):
         candidate = quantum.assignments
         # Validate again at the service boundary. Samples must cover every incident
         # exactly once, including explicit unserved choices, without resource reuse.
-        valid = (candidate is not None and len(candidate) == len(scenario.incidents)
+        valid = (quantum.status == 'completed' and candidate is not None and len(candidate) == len(scenario.incidents)
                  and {c.incident_id for c in candidate} == {i.id for i in scenario.incidents}
                  and all(c in problem.choices for c in candidate) and compatible(candidate))
+        quantum.plan_valid = valid
         if valid and sum(c.cost for c in candidate) <= optimum + 1e-8:
             selected, selected_solver = candidate, 'qaoa'
             reason = 'Validated QAOA sample matches the full exact optimum within numerical tolerance.'
@@ -71,6 +73,7 @@ def allocate(scenario, client=None):
     unserved = [c.incident_id for c in selected if c.ambulance_id is None]
     return AllocationResult(
         travel_source=scenario.travel_source, status='partial' if unserved else 'complete',
+        traffic_source='simulated' if road_travel and scenario.consider_traffic else 'none',
         selected_solver=selected_solver, selection_reason=reason, assignments=selected, unserved=unserved,
         objective=sum(c.cost for c in selected), exact_objective=optimum,
         reduced_exact_objective=sum(c.cost for c in reduced), exact_assignments=exact, exact_runtime_ms=runtime,
@@ -83,4 +86,5 @@ def allocate(scenario, client=None):
                   'QAOA searches at most three served choices plus unserved per incident. Shortlisting can exclude the full optimum.',
                   'Each hospital represents one receiving slot; no multi-round scheduling.',
                   ('Straight connectors and 30 km/h geometric estimates, not road routes.' if scenario.travel_source == 'synthetic'
-                   else 'OSRM road travel times; allocation does not certify emergency road suitability.')])
+                   else 'OSRM legs include nominal width, surface and uncertainty costs; known restrictions are checked, not certified road suitability.')]
+                 + (list(dict.fromkeys(road_travel.warnings)) if road_travel else []))

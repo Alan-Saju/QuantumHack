@@ -2,7 +2,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.main import app, get_osrm, get_roads
+from backend.main import app, create_app, get_osrm, get_roads
 from backend.models.route import Location
 from backend.osrm.client import OSRMClient, OSRMError
 from test_routing import index, payload, request
@@ -79,16 +79,23 @@ def test_invalid_upstream_data(data):
             OSRMClient(http).routes(point, point)
 
 
-def test_map_config_and_frontend_assets(api):
-    config = api.get('/api/map-config')
-    assert config.status_code == 200
-    assert config.json()['tile_url'].startswith('https://tile.openstreetmap.org/')
-    home = api.get('/')
-    assert home.status_code == 200
-    assert 'id="map"' in home.text
-    assert api.get('/assets/app.js').status_code == 200
-    assert api.get('/assets/vendor/leaflet/leaflet.js').status_code == 200
-    assert api.get('/api/emergency/route').status_code == 405
+def test_map_config_and_frontend_assets(tmp_path):
+    (tmp_path / 'index.html').write_text('<main id="map">Test map</main>')
+    (tmp_path / 'app.js').write_text('// test asset')
+    vendor = tmp_path / 'vendor/leaflet'
+    vendor.mkdir(parents=True)
+    (vendor / 'leaflet.js').write_text('// test vendor')
+    with TestClient(create_app(frontend_dist=tmp_path)) as client:
+        config = client.get('/api/map-config')
+        assert config.status_code == 200
+        assert config.json()['tile_url'].startswith('https://tile.openstreetmap.org/')
+        home = client.get('/')
+        assert home.status_code == 200
+        assert 'id="map"' in home.text
+        assert client.get('/assets/app.js').text == '// test asset'
+        assert client.get('/assets/vendor/leaflet/leaflet.js').status_code == 200
+        assert client.get('/assets/missing.js').status_code == 404
+        assert client.get('/api/emergency/route').status_code == 405
 
 
 def test_readiness_is_not_process_health(api):
@@ -114,9 +121,9 @@ def test_readiness_rejects_malformed_probe(api):
     assert api.get('/api/readiness').json()['osrm'] == 'unavailable'
 
 
-def test_unbuilt_frontend_has_setup_instructions(api, monkeypatch, tmp_path):
-    monkeypatch.setattr('backend.main.FRONTEND_DIST', tmp_path)
-    response = api.get('/')
+def test_unbuilt_frontend_has_setup_instructions(tmp_path):
+    with TestClient(create_app(frontend_dist=tmp_path / 'unbuilt')) as client:
+        response = client.get('/')
     assert response.status_code == 503
     assert 'Build the map frontend' in response.text
 

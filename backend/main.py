@@ -6,7 +6,7 @@ from typing import Annotated
 from urllib.parse import urlparse
 
 import httpx
-from fastapi import Depends, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,8 +17,7 @@ from backend.models.route import ErrorResponse, HealthResult, Location, MapConfi
 from backend.optimization.classical_optimizer import optimize
 from backend.osrm.client import OSRMClient, OSRMError
 
-app = FastAPI(title="QuantumRescue", version="0.1.0",
-              description="Phases 1–3. Simulated traffic and classical candidate ranking. Research use only.")
+router = APIRouter()
 FRONTEND_DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
 ROUTE_ERRORS = {422: {"model": ErrorResponse, "description": "Invalid route request"},
                 503: {"model": ErrorResponse, "description": "OSRM or configured road data is unavailable"}}
@@ -42,26 +41,23 @@ def get_osrm():
         yield OSRMClient(client, os.environ.get("OSRM_BASE_URL", "http://127.0.0.1:5000"))
 
 
-@app.exception_handler(OSRMError)
 def upstream_error(request: Request, exc: OSRMError):
     return JSONResponse(status_code=503, content={"error": {"code": "OSRM_UNAVAILABLE",
                         "message": "Local OSRM is unavailable or returned invalid routing data."}})
 
 
-@app.exception_handler(RequestValidationError)
 def validation_error(request: Request, exc: RequestValidationError):
     return JSONResponse(status_code=422, content={"error": {"code": "VALIDATION_ERROR",
                         "message": "Invalid request. Check the schema at /docs.",
                         "fields": [".".join(map(str, error["loc"])) for error in exc.errors()]}})
 
 
-@app.exception_handler(RoadConfigurationError)
 def road_configuration_error(request: Request, exc: RoadConfigurationError):
     return JSONResponse(status_code=503, content={"error": {"code": "ROAD_INDEX_UNAVAILABLE",
                         "message": "The configured road attribute index could not be loaded. Rebuild the index and restart the app."}})
 
 
-@app.get("/health", response_model=HealthResult)
+@router.get("/health", response_model=HealthResult)
 def health():
     return {"status": "ok", "routing_readiness": "not_checked", "traffic_source": "simulated"}
 
@@ -70,7 +66,7 @@ Client = Annotated[OSRMClient, Depends(get_osrm)]
 Roads = Annotated[RoadIndex, Depends(get_roads)]
 
 
-@app.get("/api/readiness", response_model=ReadinessResult)
+@router.get("/api/readiness", response_model=ReadinessResult)
 def readiness(client: Client):
     """Probe local OSRM at Kochi; this does not certify all routing services."""
     connected = False
@@ -90,7 +86,7 @@ def readiness(client: Client):
             "probe": "nearest at Kochi; run scripts.check_osrm to verify Route and Table"}
 
 
-@app.get("/api/map-config", response_model=MapConfig, responses={503: {"model": ErrorResponse}})
+@router.get("/api/map-config", response_model=MapConfig, responses={503: {"model": ErrorResponse}})
 def map_config():
     url = os.environ.get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
     parsed = urlparse(url)
@@ -100,20 +96,12 @@ def map_config():
     return {"tile_url": url, "tile_attribution": os.environ.get("MAP_TILE_ATTRIBUTION", "© OpenStreetMap contributors")}
 
 
-@app.get("/", include_in_schema=False)
-def map_home():
-    index = FRONTEND_DIST / "index.html"
-    if not index.is_file():
-        return HTMLResponse("<h1>Build the map frontend</h1><p>Run <code>npm --prefix frontend ci --ignore-scripts</code> and <code>npm --prefix frontend run build</code>, then reload.</p>", status_code=503)
-    return FileResponse(index, headers={"Cache-Control": "no-cache"})
-
-
-@app.post("/api/emergency/route", response_model=RouteResult, responses=ROUTE_ERRORS)
+@router.post("/api/emergency/route", response_model=RouteResult, responses=ROUTE_ERRORS)
 def route(body: RouteRequest, client: Client, roads: Roads):
     return optimize(client.routes(body.ambulance, body.emergency), roads, body)
 
 
-@app.post("/api/emergency/simulate-traffic", response_model=RouteResult, responses=ROUTE_ERRORS)
+@router.post("/api/emergency/simulate-traffic", response_model=RouteResult, responses=ROUTE_ERRORS)
 def simulate_traffic(body: RouteRequest, client: Client, roads: Roads):
     """Recalculate with the supplied scenario. No global traffic state is mutated."""
     return route(body, client, roads)
@@ -124,13 +112,35 @@ class BlockRequest(Model):
     segment_ids: list[str] = Field(min_length=1, max_length=1000)
 
 
-@app.post("/api/emergency/block-road", response_model=RouteResult, responses=ROUTE_ERRORS)
+@router.post("/api/emergency/block-road", response_model=RouteResult, responses=ROUTE_ERRORS)
 def block_road(body: BlockRequest, client: Client, roads: Roads):
     updated = body.route_request.model_copy(deep=True)
     updated.scenario.overrides.update({segment_id: "blocked" for segment_id in body.segment_ids})
     return route(updated, client, roads)
 
 
-# Same-origin assets avoid a separate frontend server or permissive CORS.
-# Source: https://fastapi.tiangolo.com/tutorial/static-files/
-app.mount("/assets", StaticFiles(directory=FRONTEND_DIST, check_dir=False), name="map-assets")
+def create_app(*, frontend_dist: Path | None = None) -> FastAPI:
+    """Build an isolated app; tests can supply assets without a Node installation."""
+    assets = FRONTEND_DIST if frontend_dist is None else Path(frontend_dist)
+    application = FastAPI(title="QuantumRescue", version="0.1.0",
+                         description="Phases 1–3. Simulated traffic and classical candidate ranking. Research use only.")
+    application.add_exception_handler(OSRMError, upstream_error)
+    application.add_exception_handler(RequestValidationError, validation_error)
+    application.add_exception_handler(RoadConfigurationError, road_configuration_error)
+    application.include_router(router)
+
+    @application.get("/", include_in_schema=False)
+    def map_home():
+        index = assets / "index.html"
+        if not index.is_file():
+            return HTMLResponse("<h1>Build the map frontend</h1><p>Run <code>npm --prefix frontend ci --ignore-scripts</code> and <code>npm --prefix frontend run build</code>, then reload.</p>", status_code=503)
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+
+    # Same-origin assets avoid permissive CORS in the combined app.
+    # https://fastapi.tiangolo.com/tutorial/static-files/
+    application.mount("/assets", StaticFiles(directory=assets, check_dir=False), name="map-assets")
+    return application
+
+
+app = create_app()

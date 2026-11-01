@@ -76,6 +76,16 @@ For later runs, use `.\scripts\start.ps1`; it picks up the generated index autom
 
 ### Basemap and connectivity
 
+Use **Use my location** below the starting coordinates to fill point A from
+your device. Approve the browser's location prompt; the marker moves and an
+existing route recalculates. The displayed accuracy is approximate, especially
+on computers without GPS. Location access needs localhost/loopback or HTTPS
+and device location services enabled. Permission denial and lookup failures
+leave your existing coordinates available for manual editing. Location is
+requested once per click; the app does not track or persist it. Coordinates
+are sent to the configured routing backend when routes are requested, and
+the basemap provider receives tile requests for the displayed area.
+
 The background uses [OpenStreetMap's standard tile service](https://operations.osmfoundation.org/policies/tiles/), with visible attribution, normal browser caching and no prefetch. Internet access is needed for those background tiles even though routing is local. Tile failures are shown separately from routing failures. This is a small local demo; use a suitable provider or self-hosted tiles for broader use.
 
 To use another OSM-derived tile provider, set `MAP_TILE_URL` to an HTTP(S) template containing `{z}`, `{x}` and `{y}`, and `MAP_TILE_ATTRIBUTION` to its required plain-text credit before starting the app. Your browser contacts that provider. An OSM map-licence link remains visible. Avoid putting secret server credentials into the tile URL, which is delivered to the browser.

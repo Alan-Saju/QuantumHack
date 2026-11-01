@@ -157,6 +157,49 @@ function movePoint(prefix, coordinates) {
   if (hasRequested) findRoutes();
 }
 
+async function useLocation() {
+  const button = $('#use-location');
+  const message = $('#location-status');
+  message.dataset.state = 'ready';
+  if (!window.isSecureContext || !navigator.geolocation) {
+    message.textContent = 'Location is unavailable in this browser. Open the app on localhost or HTTPS, or enter coordinates.';
+    message.dataset.state = 'error';
+    return;
+  }
+  const current = revision;
+  button.disabled = true;
+  button.textContent = 'Finding location…';
+  message.textContent = 'Allow location access in your browser when prompted.';
+  try {
+    // One-time device fix; do not start background tracking or store the location.
+    // https://www.w3.org/TR/geolocation/#getcurrentposition-method
+    const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject,
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }));
+    if (current !== revision) {
+      message.textContent = 'Locations changed during lookup. Click Use my location to try again.';
+      return;
+    }
+    const { latitude, longitude, accuracy } = position.coords;
+    buildRequest([latitude, longitude], [latitude, longitude]);
+    movePoint('origin', [latitude, longitude]);
+    mapView?.fit();
+    message.textContent = Number.isFinite(accuracy) && accuracy >= 0
+      ? `Starting point updated. Approximate accuracy: ${Math.round(accuracy)} m.`
+      : 'Starting point updated. Check the marker before finding a route.';
+  } catch (error) {
+    const errors = {
+      1: 'Location permission denied. Allow location access in your browser settings, or enter coordinates.',
+      2: 'Location could not be determined. Check device location services, or enter coordinates.',
+      3: 'Location lookup timed out. Try again outdoors or enter coordinates.',
+    };
+    message.textContent = errors[error?.code] ?? 'Location could not be determined. Try again or enter coordinates.';
+    message.dataset.state = 'error';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Use my location';
+  }
+}
+
 let readinessPending = false;
 async function checkConnection() {
   if (synthetic) {
@@ -201,12 +244,14 @@ $('#swap').addEventListener('click', () => {
 });
 $('#fit-map').addEventListener('click', () => mapView?.fit());
 $('#check-connection').addEventListener('click', checkConnection);
+$('#use-location').addEventListener('click', useLocation);
 
 try {
   const response = await fetch('/api/map-config');
   if (!response.ok) throw new Error('Map configuration could not be loaded. Restart the app and try again.');
   mapView = createMap(await response.json(), movePoint, selectRoute);
   updateMarkers();
+  $('#use-location').disabled = false;
   checkConnection();
 } catch (error) {
   status(error.message, 'error');

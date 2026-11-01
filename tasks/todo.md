@@ -11,7 +11,9 @@ Unchecked items still require implementation or verification.
 
 ## Checkpoint: shared starting point
 
-- [ ] Baseline branch published and reviewed before merging to main.
+- [x] Baseline branch published as codex/shared-baseline, with draft PR #1.
+- [x] Verify two isolated checkouts can branch from the same revision; build and test committed source from a fresh clone.
+- [ ] Both developers review draft PR #1 before merging to main.
 - [x] Existing unfinished work has been preserved, reviewed and tested.
 
 - [x] Task 2: Export and check the API contract.

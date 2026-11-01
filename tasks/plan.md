@@ -2,6 +2,7 @@
 
 Status: Shared baseline and API contracts implemented on `codex/shared-baseline`.
 Independent runners, test separation, CI and the two-person handoff remain planned.
+Review: [draft pull request #1](https://github.com/Alan-Saju/QuantumHack/pull/1).
 Date: 1 November 2026
 
 ## Objective

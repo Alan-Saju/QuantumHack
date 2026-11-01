@@ -1,8 +1,9 @@
 # Working together on QuantumRescue
 
 Use separate clones and task branches. Never let two people edit the same
-checkout at the same time. The first common baseline is being prepared on
-`codex/shared-baseline`; use that branch until its pull request is merged,
+checkout at the same time. The first common baseline is published on
+`codex/shared-baseline` in [draft pull request #1](https://github.com/Alan-Saju/QuantumHack/pull/1);
+use that branch until its pull request is merged,
 then use `main`. Both developers should start from the same commit.
 
 ## Responsibilities
@@ -34,6 +35,12 @@ git switch -c codex/my-task
 Compare the printed baseline revision before beginning. After the baseline
 pull request merges, clone normally without `--branch`, or switch to `main`
 and run `git pull --ff-only`. Do not overwrite local changes to change branches.
+
+The saved baseline was verified from a fresh clone: the frontend build,
+4 frontend unit tests, 35 Python tests, and API contract check pass. The
+browser regression suite also passes with shared synthetic fixtures. Two
+isolated test checkouts successfully created separate task branches from
+the same revision. Each developer still needs to confirm their own setup.
 
 ## Reproduce the baseline locally
 

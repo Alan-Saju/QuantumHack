@@ -1,0 +1,98 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { chromium } from 'playwright-core';
+
+const url = process.env.APP_URL ?? 'http://127.0.0.1:8000';
+const browser = await chromium.launch({ channel: process.platform === 'win32' ? 'msedge' : undefined, headless: true });
+const place = { id: 'node-123', name: 'Mapped Hospital <b>One</b>', latitude: 9.9465, longitude: 76.2855 };
+const other = { id: 'way-456', name: 'Mapped Hospital Two', latitude: 9.938, longitude: 76.276 };
+const fixture = JSON.parse(await readFile(new URL('../../contracts/fixtures/success.json', import.meta.url))).response;
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const errors = [];
+  let mode = 'success', bounds, routeRequests = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.route('https://tile.openstreetmap.org/**', route => route.abort());
+  await page.route('**/api/hospitals?**', async route => {
+    bounds = Object.fromEntries(new URL(route.request().url()).searchParams);
+    if (mode === 'slow') await new Promise(resolve => setTimeout(resolve, 600));
+    if (mode === 'failure') return route.fulfill({ status: 503, json: { error: { message: 'Hospital catalogue unavailable for this test.' } } });
+    return route.fulfill({ json: { hospitals: mode === 'empty' ? [] : [place, other], truncated: false, indexed_at: '2026-11-01T00:00:00Z' } });
+  });
+  await page.route('**/api/emergency/route', route => {
+    routeRequests.push(route.request().postDataJSON()); return route.fulfill({ json: fixture });
+  });
+  await page.goto(url + '/routes');
+  await page.getByRole('button', { name: 'Choose hospital from map' }).click();
+  await page.getByRole('button', { name: `Use ${place.name}`, exact: true }).waitFor();
+  assert.ok(Number(bounds.south) < place.latitude && Number(bounds.north) > place.latitude);
+  assert.equal(await page.locator('.hospital-catalogue-marker').count(), 2);
+  assert.equal(await page.locator('.hospital-results b').count(), 0, 'Hospital names are text, not HTML');
+  const origin = await page.locator('#origin-lat').inputValue(), incident = await page.locator('#incident-lat').inputValue();
+  await page.getByRole('button', { name: `Use ${place.name}`, exact: true }).click();
+  assert.equal(await page.locator('#destination-lat').inputValue(), '9.946500');
+  assert.equal(await page.locator('#destination-lon').inputValue(), '76.285500');
+  assert.match(await page.locator('#hospital-selection').textContent(), /Mapped Hospital/);
+  assert.equal(await page.locator('#origin-lat').inputValue(), origin);
+  assert.equal(await page.locator('#incident-lat').inputValue(), incident);
+  assert.equal(await page.locator('#hospital-picker').isVisible(), false);
+  assert.equal(await page.locator('.hospital-catalogue-marker').count(), 0);
+  await page.getByRole('button', { name: 'Find routes', exact: true }).click();
+  await page.locator('.route-option').first().waitFor();
+  assert.ok(routeRequests.some(body => body.emergency.latitude === place.latitude));
+  // Return to the full journey view before selecting another mapped hospital marker.
+  await page.locator('#fit-map').click();
+  await page.getByRole('button', { name: 'Choose hospital from map' }).click();
+  await page.locator('.hospital-catalogue-marker').first().waitFor();
+  await page.locator('.hospital-catalogue-marker').last().click();
+  await page.getByRole('button', { name: 'Use this hospital', exact: true }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.route-option').length === 4);
+  assert.equal(await page.locator('#destination-lat').inputValue(), '9.938000');
+  assert.ok(routeRequests.some(body => body.emergency.latitude === other.latitude));
+  mode = 'empty';
+  await page.getByRole('button', { name: 'Choose hospital from map' }).click();
+  await page.getByText(/No mapped hospitals in this view/).waitFor();
+  assert.equal(await page.locator('.hospital-result').count(), 0);
+  mode = 'failure'; await page.locator('.hospital-search').click();
+  await page.getByText('Hospital catalogue unavailable for this test.').waitFor();
+  assert.equal(await page.locator('.hospital-result').count(), 0);
+  mode = 'slow'; await page.locator('.hospital-search').click();
+  await page.locator('.leaflet-control-zoom-in').click();
+  await page.waitForTimeout(900);
+  assert.equal(await page.locator('.hospital-result').count(), 0);
+  assert.match(await page.locator('.hospital-search-status').textContent(), /Map moved/);
+  mode = 'success'; await page.locator('.hospital-search').click();
+  await page.locator('.hospital-result').first().waitFor();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.hospital-search').click();
+  await page.locator('.hospital-result').first().waitFor();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.screenshot({ path: new URL('../test-results/hospital-picker-mobile.png', import.meta.url).pathname.replace(/^\/(\w:)/, '$1'), fullPage: true });
+  await page.locator('.hospital-close').click();
+
+  // Dashboard selection replaces one slot, without inheriting another facility's specialties or beds.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(url);
+  await page.waitForFunction(() => !document.querySelector('#optimize').disabled);
+  await page.locator('#hospital-slot').selectOption('H2');
+  await page.getByRole('button', { name: 'Choose hospital from map' }).click();
+  await page.getByRole('button', { name: `Use ${place.name}`, exact: true }).click();
+  assert.match(await page.locator('#hospitals').textContent(), /Mapped Hospital/);
+  assert.equal(await page.locator('#control-H2').isChecked(), false);
+  assert.equal(await page.locator('#hospital-care-H2-cardiac').isChecked(), false);
+  await page.locator('#hospital-care-H2-cardiac').check();
+  await page.locator('#control-H2').check();
+  const request = page.waitForRequest(r => r.url().endsWith('/api/allocation/optimize'));
+  await page.locator('#optimize').click();
+  const body = (await request).postDataJSON();
+  const hospital = body.hospitals.find(item => item.id === 'H2');
+  assert.equal(hospital.name, place.name);
+  assert.equal(hospital.latitude, place.latitude);
+  assert.equal(hospital.longitude, place.longitude);
+  assert.ok(hospital.capabilities.includes('cardiac'));
+  assert.equal(hospital.available_slots, 1);
+  await page.locator('#fleet-snapshot:not([hidden])').waitFor();
+  await page.screenshot({ path: new URL('../test-results/hospital-selected-dashboard.png', import.meta.url).pathname.replace(/^\/(\w:)/, '$1'), fullPage: true });
+  assert.deepEqual(errors, []);
+  console.log('Hospital picker passed: viewport search, text safety, map/list selection, destination routing, empty/errors, stale results, mobile and dashboard configuration.');
+} finally { await browser.close(); }

@@ -11,7 +11,7 @@ export function updateOverview(scenario) {
   text('fleet-count', scenario.ambulances.filter(item => item.available).length);
   text('incident-count', scenario.incidents.length);
   text('hospital-slot-count', scenario.hospitals.reduce((sum, item) => sum + item.available_slots, 0));
-  text('hospital-network-label', `${scenario.hospitals.length} fixed hospital sites`);
+  text('hospital-network-label', `${scenario.hospitals.length} configured hospital sites`);
   text('ambulance-group-count', scenario.ambulances.length);
   text('incident-group-count', scenario.incidents.length);
   text('hospital-group-count', scenario.hospitals.length);
@@ -51,4 +51,17 @@ export function metric(value, label) {
   const element = node('div', '', 'metric');
   element.append(node('strong', value), node('span', label));
   return element;
+}
+
+export function roadLegDetails(legs) {
+  const disclosure = node('details', '', 'road-leg-details');
+  disclosure.append(node('summary', 'Road costs and data'));
+  legs.forEach((leg, index) => {
+    const cost = leg.cost, coverage = leg.road_coverage;
+    disclosure.append(node('small', `${index === 0 ? 'Response' : 'Hospital'} leg: ETA ${(cost.travel_time_s / 60).toFixed(1)} min · cost ${(cost.total / 60).toFixed(2)} min-equivalent.`));
+    disclosure.append(node('small', `Penalties in seconds-equivalent: narrow roads +${cost.suitability_penalty_s.toFixed(1)}, surface +${cost.risk_penalty_s.toFixed(1)}, missing data +${cost.uncertainty_penalty_s.toFixed(1)}.`));
+    disclosure.append(node('small', `OSM matches ${coverage.matched_count}/${coverage.segment_count} · mapped width ${coverage.known_width_count}/${coverage.segment_count} · recognized surface ${coverage.known_surface_count}/${coverage.segment_count}.`));
+    if (leg.warnings.length) disclosure.append(node('small', leg.warnings.join(' ')));
+  });
+  return disclosure;
 }

@@ -8,6 +8,7 @@ osrm/data/*
 !osrm/data/.gitkeep
 data/road_network/*.json
 !data/road_network/demo.json
+data/hospitals/*.json
 frontend/node_modules/
 frontend/dist/
 frontend/test-results/

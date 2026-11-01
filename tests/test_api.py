@@ -113,6 +113,21 @@ def test_map_config_and_frontend_assets(tmp_path):
         assert client.get('/api/emergency/route').status_code == 405
 
 
+def test_frontend_assets_revalidate_after_a_build(tmp_path):
+    path = tmp_path / 'app.js'
+    path.write_text('// old asset')
+    with TestClient(create_app(frontend_dist=tmp_path)) as client:
+        old = client.get('/assets/app.js')
+        assert old.headers['cache-control'] == 'no-cache'
+        unchanged = client.get('/assets/app.js', headers={'if-none-match': old.headers['etag']})
+        assert unchanged.status_code == 304
+        assert unchanged.headers['cache-control'] == 'no-cache'
+        path.write_text('// newer built asset with different content')
+        changed = client.get('/assets/app.js', headers={'if-none-match': old.headers['etag']})
+        assert changed.status_code == 200
+        assert changed.text == '// newer built asset with different content'
+
+
 def test_readiness_is_not_process_health(api):
     class Probe:
         def nearest(self, point):

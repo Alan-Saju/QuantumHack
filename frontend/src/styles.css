@@ -23,7 +23,9 @@ h1 { font-size:19px; font-weight:650; letter-spacing:-.5px; margin:0; }
 .location-fieldset { border:0; padding:0; margin:0; min-width:0; }
 .location-fieldset legend { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:650; margin-bottom:10px; padding:0; }
 .point-label { display:inline-grid; place-items:center; width:21px; height:21px; border-radius:50%; color:white; font-size:10px; background:var(--teal); }
-.destination-label { background:var(--orange); }
+.destination-label { background:#355a8a; }
+.incident-label { background:var(--orange); }
+.incident-fieldset { margin-bottom:12px; }
 .coordinate-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .coordinate-grid label { font-size:10px; color:var(--muted); }
 input { display:block; width:100%; min-width:0; border:1px solid var(--line); border-radius:8px; padding:10px; margin-top:5px; background:#f7f9f7; color:var(--ink); font-size:12px; font-variant-numeric:tabular-nums; }
@@ -46,12 +48,22 @@ h2 { font-size:12px; margin:0; font-weight:650; }
 .route-status[data-state=error] { color:var(--error); }
 .route-status[data-state=loading] { color:var(--teal); }
 .route-option { display:block; text-align:left; width:100%; padding:12px; margin:8px 0; color:var(--ink); border:1px solid var(--line); border-radius:var(--radius); background:white; }
-.route-option[aria-pressed=true] { background:var(--teal-pale); border-color:var(--teal); }
+.route-option[aria-pressed=true] { background:#edf7fe; border-color:#3489bf; }
 .route-option.rejected { border-style:dashed; }
 .option-top,.option-bottom { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .option-top { font-size:11px; font-weight:650; }
 .option-bottom { margin-top:8px; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
-.option-badge { font-size:9px; font-weight:400; color:var(--teal); }
+.option-badge { font-size:10px; font-weight:600; color:var(--teal); }
+.route-option:hover { border-color:#3489bf; }
+.option-duration { font-size:26px; line-height:1.2; letter-spacing:-.6px; color:var(--ink); font-weight:650; }
+.option-arrival { display:block; margin-top:6px; font-size:11px; line-height:1.5; color:var(--muted); }
+.option-footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line); font-size:10px; color:var(--muted); }
+.option-selection { color:var(--teal); font-weight:650; }
+.route-option[aria-pressed=true] { box-shadow:inset 3px 0 #3489bf; }
+.option-legs { display:flex; flex-direction:column; gap:4px; margin-top:10px; font-size:11px; color:var(--muted); }
+.trip-estimate-note { font-size:11px; line-height:1.6; margin:10px 0; color:var(--muted); }
+.timing-source { margin:12px 0; padding:8px 10px; border-radius:6px; background:#f7f9f7; color:var(--muted); font-size:11px; line-height:1.5; }
+.route-checks { margin-top:12px; }
 .rejected .option-badge { color:var(--error); }
 .route-note,.detail-list { color:var(--muted); font-size:10px; line-height:1.6; overflow-wrap:anywhere; }
 .route-note { margin:10px 0; }
@@ -70,7 +82,8 @@ summary { cursor:pointer; }
 .map-instruction { position:absolute; z-index:500; top:28px; left:390px; max-width:calc(100% - 560px); margin:0; padding:10px 14px; border-radius:30px; background:#fffffff0; box-shadow:0 2px 8px #243c3010; font-size:11px; color:var(--muted); pointer-events:none; }
 .tile-status { position:absolute; z-index:500; bottom:36px; left:390px; right:70px; margin:0; padding:10px 14px; border-radius:8px; background:#fff; border:1px solid var(--line); color:var(--muted); font-size:11px; line-height:1.5; pointer-events:none; }
 .map-marker { display:grid; place-items:center; color:white; border:3px solid white; border-radius:50%; font-weight:700; font-size:12px; background:var(--teal); box-shadow:0 2px 8px #20342f30; }
-.map-marker.destination { background:var(--orange); }
+.map-marker.destination { background:#355a8a; }
+.map-marker.incident { background:var(--orange); }
 .leaflet-control-zoom { margin:0 24px 24px 0!important; border:1px solid #dce4de!important; border-radius:9px!important; overflow:hidden; }
 .leaflet-control-zoom a { width:36px!important; height:36px!important; line-height:36px!important; color:var(--ink)!important; }
 .leaflet-container { font-family:inherit; }

@@ -20,7 +20,7 @@ try {
       const expected = { success: /Synthetic example routes loaded/, 'no-route': /No road route was found/,
         rejected: /All candidates failed/, 'service-failure': /Local OSRM is unavailable/ };
       await page.locator('#route-status').filter({ hasText: expected[scenario] }).waitFor();
-      assert.equal(await page.locator('.route-option').count(), ['success', 'rejected'].includes(scenario) ? 2 : 0);
+      assert.equal(await page.locator('.route-option').count(), ['success', 'rejected'].includes(scenario) ? 4 : 0);
       for (const width of [320, 768, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
         assert.equal(await page.locator('.demo-banner').isVisible(), true);

@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildRequest, formatDistance, formatDuration, routeError } from '../src/routing.js';
 
-test('baseline request disables simulated traffic and optional scoring', () => {
+test('route requests enable road suitability costs without simulated traffic', () => {
   const body = buildRequest([9.9312, 76.2673], [9.95, 76.29]);
   assert.equal(body.ambulance.latitude, 9.9312);
   assert.equal(body.emergency.longitude, 76.29);
   assert.deepEqual(body.optimization, { algorithm: 'classical', consider_traffic: false,
-    consider_road_width: false, consider_risk: false });
+    consider_road_width: true, consider_risk: true });
 });
 
 test('invalid or missing coordinates never generate a request', () => {

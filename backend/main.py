@@ -6,18 +6,19 @@ from typing import Annotated, Literal
 from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, Request, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 
-from backend.allocation.scenario import AllocationRequest, demo_scenario
+from backend.allocation.scenario import AllocationRequest, demo_scenario, VehicleType, VehicleProfile, VEHICLE_PROFILES
 from backend.allocation.service import AllocationResult, allocate
 from backend.intelligence.road_analyzer import RoadIndex
 from backend.models.route import ErrorResponse, HealthResult, Location, MapConfig, Model, ReadinessResult, RouteRequest, RouteResult
 from backend.optimization.classical_optimizer import optimize
 from backend.osrm.client import OSRMClient, OSRMError, OSRMNoSegmentError
+from backend.hospitals import HospitalDirectory, HospitalSearch, HospitalIndexError
 
 router = APIRouter()
 FRONTEND_DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
@@ -27,6 +28,15 @@ ROUTE_ERRORS = {422: {"model": ErrorResponse, "description": "Invalid route requ
 
 class RoadConfigurationError(Exception):
     """Configured road data cannot be loaded."""
+
+
+class RevalidatingStaticFiles(StaticFiles):
+    """Unversioned local build assets must be checked on each page reload."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers['Cache-Control'] = 'no-cache'
+        return response
 
 
 @lru_cache
@@ -41,6 +51,31 @@ def get_roads() -> RoadIndex:
 def get_osrm():
     with httpx.Client(timeout=15, follow_redirects=False, trust_env=False) as client:
         yield OSRMClient(client, os.environ.get("OSRM_BASE_URL", "http://127.0.0.1:5000"))
+
+
+@lru_cache
+def get_hospital_directory():
+    path = Path(os.environ.get('HOSPITAL_INDEX_PATH', Path(__file__).resolve().parents[1] / 'data/hospitals/hospitals.json'))
+    try:
+        return HospitalDirectory.load(path)
+    except (OSError, ValueError, TypeError) as exc:
+        raise HospitalIndexError('Hospital catalogue is unavailable') from exc
+
+
+@router.get('/api/hospitals', response_model=HospitalSearch, responses={422: {'model': ErrorResponse}, 503: {'model': ErrorResponse}})
+def hospitals_in_view(south: Annotated[float, Query(ge=-90, le=90)], west: Annotated[float, Query(ge=-180, le=180)],
+                      north: Annotated[float, Query(ge=-90, le=90)], east: Annotated[float, Query(ge=-180, le=180)],
+                      limit: Annotated[int, Query(ge=1, le=200)] = 100):
+    if south >= north or west >= east:
+        return JSONResponse(status_code=422, content={'error': {'code': 'INVALID_BOUNDS', 'message': 'Choose a valid map area.'}})
+    directory = get_hospital_directory()
+    places = [h for h in directory.hospitals if south <= h.latitude <= north and west <= h.longitude <= east]
+    return HospitalSearch(hospitals=places[:limit], truncated=len(places) > limit, indexed_at=directory.generated_at)
+
+
+def hospital_index_error(request: Request, exc: HospitalIndexError):
+    return JSONResponse(status_code=503, content={'error': {'code': 'HOSPITAL_INDEX_UNAVAILABLE',
+                        'message': 'Hospital locations are unavailable. Build the hospital index from the local map extract and restart the backend.'}})
 
 
 def upstream_error(request: Request, exc: OSRMError):
@@ -77,9 +112,17 @@ def allocation_demo(hospital_count: Literal['3', '5'] = '3'):
     return demo_scenario(int(hospital_count))
 
 
+@router.get('/api/allocation/vehicle-profiles', response_model=dict[VehicleType, VehicleProfile])
+def allocation_vehicle_profiles():
+    """Editable demo presets shared with the frontend; not certified fleet measurements."""
+    return VEHICLE_PROFILES
+
+
 @router.post('/api/allocation/optimize', response_model=AllocationResult, responses=ROUTE_ERRORS)
 def allocation_optimize(body: AllocationRequest, client: Client):
-    return allocate(body, client)
+    # Synthetic estimates do not depend on a configured road index.
+    roads = get_roads() if body.travel_source == 'osrm' else None
+    return allocate(body, client, roads)
 
 
 @router.get("/api/readiness", response_model=ReadinessResult)
@@ -144,6 +187,7 @@ def create_app(*, frontend_dist: Path | None = None) -> FastAPI:
     application.add_exception_handler(OSRMNoSegmentError, location_error)
     application.add_exception_handler(RequestValidationError, validation_error)
     application.add_exception_handler(RoadConfigurationError, road_configuration_error)
+    application.add_exception_handler(HospitalIndexError, hospital_index_error)
     application.include_router(router)
 
     @application.get("/", include_in_schema=False)
@@ -165,7 +209,7 @@ def create_app(*, frontend_dist: Path | None = None) -> FastAPI:
 
     # Same-origin assets avoid permissive CORS in the combined app.
     # https://fastapi.tiangolo.com/tutorial/static-files/
-    application.mount("/assets", StaticFiles(directory=assets, check_dir=False), name="map-assets")
+    application.mount("/assets", RevalidatingStaticFiles(directory=assets, check_dir=False), name="map-assets")
     return application
 
 

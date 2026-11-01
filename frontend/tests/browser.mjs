@@ -9,6 +9,7 @@ const output = new URL('../test-results/', import.meta.url);
 await mkdir(output, { recursive: true });
 let mode = 'success';
 let lastBody;
+let requestBodies = [];
 let requestCount = 0;
 const fixtures = Object.fromEntries(await Promise.all(['success', 'no-route', 'rejected', 'service-failure'].map(async name =>
   [name, JSON.parse(await readFile(new URL(`../../contracts/fixtures/${name}.json`, import.meta.url), 'utf8'))])));
@@ -42,12 +43,20 @@ try {
   await page.route('**/api/emergency/route', async route => {
     requestCount++;
     lastBody = route.request().postDataJSON();
+    const body = lastBody;
+    requestBodies.push(body);
     assert.equal(lastBody.optimization.consider_traffic, false);
-    assert.equal(lastBody.optimization.consider_road_width, false);
+    assert.equal(lastBody.optimization.consider_road_width, true);
     if (mode === 'slow') await new Promise(resolve => setTimeout(resolve, 700));
     if (mode === 'unavailable') return route.fulfill({ status: fixtures['service-failure'].status_code, json: fixtures['service-failure'].response });
     if (mode === 'empty') return route.fulfill({ json: fixtures['no-route'].response });
-    await route.fulfill({ json: result(lastBody) });
+    if (mode === 'hospital-empty' && body.ambulance.latitude === Number(await page.locator('#incident-lat').inputValue())) {
+      return route.fulfill({ json: fixtures['no-route'].response });
+    }
+    const payload = result(body);
+    // Two alternatives to the incident and one to the hospital produce two complete trips.
+    if (body.ambulance.latitude === Number(await page.locator('#incident-lat').inputValue())) payload.candidates = payload.candidates.slice(0, 1);
+    await route.fulfill({ json: payload });
   });
   await page.goto(`${url}/routes`);
   assert.equal(await page.locator('header.app-header').count(), 0, 'The map has no page header');
@@ -61,7 +70,7 @@ try {
     assert.equal(response.status(), 200, `Built asset ${asset}`);
   }
   await page.getByText('OSRM connected · road attributes loaded').waitFor();
-  assert.equal(await page.locator('.leaflet-marker-icon').count(), 2);
+  assert.equal(await page.locator('.leaflet-marker-icon').count(), 3);
   for (let index = 0; index < 3; index++) {
     await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
     await page.waitForTimeout(300);
@@ -76,34 +85,57 @@ try {
   await page.getByRole('button', { name: 'Find routes' }).click();
   await page.locator('.route-option').first().waitFor();
   assert.equal(await page.locator('.route-option').count(), 2);
+  assert.equal(await page.locator('.option-duration').count(), 2);
+  assert.equal(await page.locator('.option-duration').first().innerText(), '40 sec');
+  assert.match(await page.locator('#timing-source').innerText(), /No live traffic/);
+  assert.match(await page.locator('.option-arrival').first().innerText(), /Hospital arrival \d{2}:\d{2} IST/);
+  assert.match(await page.locator('.option-legs').first().innerText(), /To incident.*\nTo hospital/);
+  assert.equal(requestBodies.length, 2);
+  const responseBody = requestBodies.find(body => body.ambulance.latitude === 9.9312);
+  const transportBody = requestBodies.find(body => body.ambulance.latitude === 9.9405);
+  assert.deepEqual(responseBody.emergency, transportBody.ambulance);
+  assert.equal(transportBody.emergency.latitude, Number(await page.locator('#destination-lat').inputValue()));
+  assert.match(await page.locator('.option-badge').first().innerText(), /Recommended|Fastest/);
+  assert.equal(await page.locator('.route-option[aria-pressed="true"] .option-selection').innerText(), 'Selected');
+  assert.equal(await page.locator('.route-checks').getAttribute('open'), null);
   assert.equal(await page.locator('.leaflet-overlay-pane path').count(), 2);
+  assert.equal(await page.locator('.leaflet-overlay-pane path[stroke="#69b9f0"]').count(), 1);
+  assert.equal(await page.locator('.leaflet-overlay-pane path[stroke="#929aa0"]').count(), 1);
   const oldLatitude = await page.locator('#origin-lat').inputValue();
-  const routePoint = await page.locator('.leaflet-overlay-pane path[stroke="#758f97"]').evaluate(path => {
-    const point = path.getPointAtLength(path.getTotalLength() / 2);
+  const routePoint = await page.locator('.leaflet-overlay-pane path[stroke="#929aa0"]').first().evaluate(path => {
+    const point = path.getPointAtLength(path.getTotalLength() * 0.2);
     const screen = new DOMPoint(point.x, point.y).matrixTransform(path.getScreenCTM());
     return { x: screen.x, y: screen.y };
   });
   await page.mouse.click(routePoint.x, routePoint.y);
-  assert.equal(await page.locator('[data-id="osrm-1"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('[data-id="trip-1-0"]').getAttribute('aria-pressed'), 'true');
   assert.equal(await page.locator('#origin-lat').inputValue(), oldLatitude, 'route inspection must not place a map endpoint');
   await page.getByRole('button', { name: /Route 2/ }).click();
-  assert.equal(await page.locator('[data-id="osrm-1"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('[data-id="trip-1-0"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('[data-id="trip-1-0"] .option-selection').innerText(), 'Selected');
 
   await page.locator('#destination-lat').fill('9.96');
   await page.locator('#destination-lat').press('Tab');
   await page.waitForFunction(() => document.querySelectorAll('.route-option').length === 2);
-  assert.equal(lastBody.emergency.latitude, 9.96);
+  assert.ok(requestBodies.slice(-2).some(body => body.emergency.latitude === 9.96));
+  await page.locator('#incident-lat').fill('9.945');
+  await page.locator('#incident-lat').press('Tab');
+  await page.waitForFunction(() => document.querySelectorAll('.route-option').length === 2);
+  assert.ok(requestBodies.slice(-2).some(body => body.emergency.latitude === 9.945));
+  assert.ok(requestBodies.slice(-2).some(body => body.ambulance.latitude === 9.945));
   const before = requestCount;
   await page.getByRole('button', { name: 'Set A on map' }).click();
   await page.locator('#map').click({ position: { x: 420, y: 270 } });
   await page.waitForFunction(() => document.querySelectorAll('.route-option').length === 2);
   assert.ok(requestCount > before);
-  assert.notEqual(lastBody.ambulance.latitude, 9.9312);
+  const movedLatitude = Number(await page.locator('#origin-lat').inputValue());
+  assert.ok(requestBodies.slice(-2).some(body => body.ambulance.latitude === movedLatitude));
 
   mode = 'rejected';
   await page.getByRole('button', { name: 'Find routes' }).click();
   await page.getByText(/All candidates failed/).waitFor();
   assert.equal(await page.locator('.route-option.rejected').count(), 2);
+  assert.equal(await page.locator('.option-arrival').filter({ hasText: 'Hospital arrival' }).count(), 0);
   assert.match(await page.locator('.leaflet-overlay-pane path').first().getAttribute('stroke-dasharray'), /7/);
 
   mode = 'unavailable';
@@ -116,6 +148,11 @@ try {
   await page.getByRole('button', { name: 'Find routes' }).click();
   await page.getByText(/No road route was found/).waitFor();
   assert.equal(await page.locator('.route-option').count(), 0);
+
+  mode = 'hospital-empty';
+  await page.getByRole('button', { name: 'Find routes' }).click();
+  await page.getByText(/No road route was found for the hospital leg/).waitFor();
+  assert.equal(await page.locator('.route-option').count(), 0, 'A response leg alone is not a complete trip');
 
   const previousCount = requestCount;
   await page.locator('#origin-lat').fill('91');
@@ -153,6 +190,14 @@ try {
     await page.screenshot({ path: new URL(`map-${width}.png`, output).pathname.replace(/^\/([A-Za-z]:)/, '$1'), fullPage: true });
   }
   assert.deepEqual(errors, []);
+  await page.setViewportSize({ width: 320, height: 1000 });
+  await page.getByRole('button', { name: 'Find routes' }).click();
+  await page.locator('.route-option').first().waitFor();
+  const mobileResults = await page.locator('.route-option').first().boundingBox();
+  const mobilePlanner = await page.locator('.sidebar').boundingBox();
+  assert.ok(mobileResults.y >= mobilePlanner.y && mobileResults.y + mobileResults.height <= mobilePlanner.y + mobilePlanner.height,
+    'Mobile results are brought into view after finding routes');
+  await page.screenshot({ path: new URL('routes-mobile-results.png', output).pathname.replace(/^\/([A-Za-z]:)/, '$1') });
   await page.route('**/api/readiness', route => route.fulfill({ json: { osrm: 'unavailable', road_attributes: 'not_configured' } }));
   await page.getByRole('button', { name: 'Check again' }).click();
   await page.getByText('OSRM unavailable · start the local routing service').waitFor();

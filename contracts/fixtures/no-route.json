@@ -35,7 +35,8 @@
       "congestion": 0.0,
       "risk": 1.0,
       "suitability": 1.0,
-      "time": 1.0
+      "time": 1.0,
+      "uncertainty": 1.0
     }
   },
   "response": {

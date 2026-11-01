@@ -35,7 +35,8 @@
       "congestion": 0.0,
       "risk": 1.0,
       "suitability": 1.0,
-      "time": 1.0
+      "time": 1.0,
+      "uncertainty": 1.0
     }
   },
   "response": {
@@ -43,10 +44,14 @@
       {
         "cost": {
           "congestion_penalty_s": 0.0,
+          "narrowness_exposure_s": 0.0,
           "risk_penalty_s": 0.0,
           "suitability_penalty_s": 0.0,
+          "surface_exposure_s": 0.0,
           "total": 20.0,
-          "travel_time_s": 20.0
+          "travel_time_s": 20.0,
+          "uncertainty_exposure_s": 0.0,
+          "uncertainty_penalty_s": 0.0
         },
         "distance_m": 200.0,
         "estimated_time_s": 20.0,
@@ -70,6 +75,15 @@
         },
         "id": "osrm-0",
         "rejection_reasons": [],
+        "road_coverage": {
+          "known_surface_count": 2,
+          "known_width_count": 2,
+          "matched_count": 2,
+          "segment_count": 2,
+          "segment_time_s": 20.0,
+          "unknown_surface_time_s": 0.0,
+          "unknown_width_time_s": 0.0
+        },
         "segments": [
           {
             "distance_m": 100.0,
@@ -123,10 +137,14 @@
       {
         "cost": {
           "congestion_penalty_s": 0.0,
+          "narrowness_exposure_s": 0.0,
           "risk_penalty_s": 0.0,
           "suitability_penalty_s": 0.0,
+          "surface_exposure_s": 0.0,
           "total": 30.0,
-          "travel_time_s": 30.0
+          "travel_time_s": 30.0,
+          "uncertainty_exposure_s": 0.0,
+          "uncertainty_penalty_s": 0.0
         },
         "distance_m": 240.0,
         "estimated_time_s": 30.0,
@@ -150,6 +168,15 @@
         },
         "id": "osrm-1",
         "rejection_reasons": [],
+        "road_coverage": {
+          "known_surface_count": 2,
+          "known_width_count": 2,
+          "matched_count": 2,
+          "segment_count": 2,
+          "segment_time_s": 30.0,
+          "unknown_surface_time_s": 0.0,
+          "unknown_width_time_s": 0.0
+        },
         "segments": [
           {
             "distance_m": 120.0,
@@ -204,10 +231,14 @@
     "classical_route": {
       "cost": {
         "congestion_penalty_s": 0.0,
+        "narrowness_exposure_s": 0.0,
         "risk_penalty_s": 0.0,
         "suitability_penalty_s": 0.0,
+        "surface_exposure_s": 0.0,
         "total": 20.0,
-        "travel_time_s": 20.0
+        "travel_time_s": 20.0,
+        "uncertainty_exposure_s": 0.0,
+        "uncertainty_penalty_s": 0.0
       },
       "distance_m": 200.0,
       "estimated_time_s": 20.0,
@@ -231,6 +262,15 @@
       },
       "id": "osrm-0",
       "rejection_reasons": [],
+      "road_coverage": {
+        "known_surface_count": 2,
+        "known_width_count": 2,
+        "matched_count": 2,
+        "segment_count": 2,
+        "segment_time_s": 20.0,
+        "unknown_surface_time_s": 0.0,
+        "unknown_width_time_s": 0.0
+      },
       "segments": [
         {
           "distance_m": 100.0,
@@ -285,10 +325,14 @@
     "fallback_route": {
       "cost": {
         "congestion_penalty_s": 0.0,
+        "narrowness_exposure_s": 0.0,
         "risk_penalty_s": 0.0,
         "suitability_penalty_s": 0.0,
+        "surface_exposure_s": 0.0,
         "total": 20.0,
-        "travel_time_s": 20.0
+        "travel_time_s": 20.0,
+        "uncertainty_exposure_s": 0.0,
+        "uncertainty_penalty_s": 0.0
       },
       "distance_m": 200.0,
       "estimated_time_s": 20.0,
@@ -312,6 +356,15 @@
       },
       "id": "osrm-0",
       "rejection_reasons": [],
+      "road_coverage": {
+        "known_surface_count": 2,
+        "known_width_count": 2,
+        "matched_count": 2,
+        "segment_count": 2,
+        "segment_time_s": 20.0,
+        "unknown_surface_time_s": 0.0,
+        "unknown_width_time_s": 0.0
+      },
       "segments": [
         {
           "distance_m": 100.0,

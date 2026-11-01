@@ -1,6 +1,7 @@
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+from backend.models.geography import KERALA_BOUNDS
 
 NonNegative = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 Positive = Annotated[float, Field(gt=0, allow_inf_nan=False)]
@@ -36,6 +37,7 @@ class ReadinessResult(Model):
 class MapConfig(Model):
     tile_url: str
     tile_attribution: str
+    operating_bounds: tuple[tuple[float, float], tuple[float, float]] = KERALA_BOUNDS
 
 
 class Location(Model):
@@ -54,6 +56,7 @@ class Weights(Model):
     congestion: NonNegative = 0
     suitability: NonNegative = 1
     risk: NonNegative = 1
+    uncertainty: NonNegative = 1
 
 
 class Scenario(Model):
@@ -114,7 +117,21 @@ class Cost(Model):
     congestion_penalty_s: NonNegative = 0
     suitability_penalty_s: NonNegative = 0
     risk_penalty_s: NonNegative = 0
+    uncertainty_penalty_s: NonNegative = 0
+    narrowness_exposure_s: NonNegative = 0
+    surface_exposure_s: NonNegative = 0
+    uncertainty_exposure_s: NonNegative = 0
     total: NonNegative = 0
+
+
+class RoadCoverage(Model):
+    segment_count: int = Field(default=0, ge=0)
+    matched_count: int = Field(default=0, ge=0)
+    known_width_count: int = Field(default=0, ge=0)
+    known_surface_count: int = Field(default=0, ge=0)
+    segment_time_s: NonNegative = 0
+    unknown_width_time_s: NonNegative = 0
+    unknown_surface_time_s: NonNegative = 0
 
 
 class ScoredSegment(Segment):
@@ -132,6 +149,7 @@ class ScoredRoute(Model):
     warnings: list[str]
     cost: Cost
     segments: list[ScoredSegment]
+    road_coverage: RoadCoverage = Field(default_factory=RoadCoverage)
 
 
 class RouteResult(Model):

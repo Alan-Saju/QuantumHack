@@ -46,6 +46,11 @@
             "title": "Ambulances",
             "type": "array"
           },
+          "consider_traffic": {
+            "default": false,
+            "title": "Consider Traffic",
+            "type": "boolean"
+          },
           "hospitals": {
             "items": {
               "$ref": "#/components/schemas/Hospital"
@@ -63,6 +68,14 @@
             "minItems": 1,
             "title": "Incidents",
             "type": "array"
+          },
+          "require_known_width": {
+            "default": false,
+            "title": "Require Known Width",
+            "type": "boolean"
+          },
+          "road_scenario": {
+            "$ref": "#/components/schemas/Scenario"
           },
           "solver": {
             "$ref": "#/components/schemas/SolverOptions"
@@ -104,6 +117,11 @@
             "title": "Ambulances",
             "type": "array"
           },
+          "consider_traffic": {
+            "default": false,
+            "title": "Consider Traffic",
+            "type": "boolean"
+          },
           "hospitals": {
             "items": {
               "$ref": "#/components/schemas/Hospital"
@@ -121,6 +139,14 @@
             "minItems": 1,
             "title": "Incidents",
             "type": "array"
+          },
+          "require_known_width": {
+            "default": false,
+            "title": "Require Known Width",
+            "type": "boolean"
+          },
+          "road_scenario": {
+            "$ref": "#/components/schemas/Scenario"
           },
           "solver": {
             "$ref": "#/components/schemas/SolverOptions"
@@ -240,6 +266,15 @@
             "title": "Status",
             "type": "string"
           },
+          "traffic_source": {
+            "default": "none",
+            "enum": [
+              "none",
+              "simulated"
+            ],
+            "title": "Traffic Source",
+            "type": "string"
+          },
           "travel_source": {
             "enum": [
               "synthetic",
@@ -316,6 +351,12 @@
             "title": "Capabilities",
             "type": "array"
           },
+          "height_m": {
+            "default": 2.8,
+            "exclusiveMinimum": 0.0,
+            "title": "Height M",
+            "type": "number"
+          },
           "id": {
             "maxLength": 40,
             "minLength": 1,
@@ -340,6 +381,27 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "vehicle_type": {
+            "default": "traveller",
+            "enum": [
+              "traveller",
+              "omini"
+            ],
+            "title": "Vehicle Type",
+            "type": "string"
+          },
+          "weight_t": {
+            "default": 3.5,
+            "exclusiveMinimum": 0.0,
+            "title": "Weight T",
+            "type": "number"
+          },
+          "width_m": {
+            "default": 2.4,
+            "exclusiveMinimum": 0.0,
+            "title": "Width M",
+            "type": "number"
           }
         },
         "required": [
@@ -408,6 +470,14 @@
             "title": "Incident Id",
             "type": "string"
           },
+          "leg_details": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TravelLeg"
+            },
+            "title": "Leg Details",
+            "type": "array"
+          },
           "legs": {
             "default": [],
             "items": {
@@ -443,6 +513,12 @@
             "title": "Congestion Penalty S",
             "type": "number"
           },
+          "narrowness_exposure_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Narrowness Exposure S",
+            "type": "number"
+          },
           "risk_penalty_s": {
             "default": 0,
             "minimum": 0.0,
@@ -455,6 +531,12 @@
             "title": "Suitability Penalty S",
             "type": "number"
           },
+          "surface_exposure_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Surface Exposure S",
+            "type": "number"
+          },
           "total": {
             "default": 0,
             "minimum": 0.0,
@@ -465,6 +547,18 @@
             "default": 0,
             "minimum": 0.0,
             "title": "Travel Time S",
+            "type": "number"
+          },
+          "uncertainty_exposure_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Uncertainty Exposure S",
+            "type": "number"
+          },
+          "uncertainty_penalty_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Uncertainty Penalty S",
             "type": "number"
           }
         },
@@ -605,6 +699,74 @@
         "title": "Hospital",
         "type": "object"
       },
+      "HospitalPlace": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^(node|way|relation)-[0-9]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "id",
+          "name"
+        ],
+        "title": "HospitalPlace",
+        "type": "object"
+      },
+      "HospitalSearch": {
+        "additionalProperties": false,
+        "properties": {
+          "hospitals": {
+            "items": {
+              "$ref": "#/components/schemas/HospitalPlace"
+            },
+            "title": "Hospitals",
+            "type": "array"
+          },
+          "indexed_at": {
+            "title": "Indexed At",
+            "type": "string"
+          },
+          "source": {
+            "default": "OpenStreetMap local extract",
+            "title": "Source",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hospitals",
+          "truncated",
+          "indexed_at"
+        ],
+        "title": "HospitalSearch",
+        "type": "object"
+      },
       "Incident": {
         "additionalProperties": false,
         "properties": {
@@ -686,6 +848,50 @@
       "MapConfig": {
         "additionalProperties": false,
         "properties": {
+          "operating_bounds": {
+            "default": [
+              [
+                8.15,
+                74.4
+              ],
+              [
+                12.9,
+                77.8
+              ]
+            ],
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              }
+            ],
+            "title": "Operating Bounds",
+            "type": "array"
+          },
           "tile_attribution": {
             "title": "Tile Attribution",
             "type": "string"
@@ -803,6 +1009,11 @@
             },
             "title": "Parameters",
             "type": "array"
+          },
+          "plan_valid": {
+            "default": false,
+            "title": "Plan Valid",
+            "type": "boolean"
           },
           "runtime_ms": {
             "default": 0,
@@ -965,6 +1176,55 @@
         "title": "RoadAttributes",
         "type": "object"
       },
+      "RoadCoverage": {
+        "additionalProperties": false,
+        "properties": {
+          "known_surface_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Known Surface Count",
+            "type": "integer"
+          },
+          "known_width_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Known Width Count",
+            "type": "integer"
+          },
+          "matched_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Matched Count",
+            "type": "integer"
+          },
+          "segment_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Segment Count",
+            "type": "integer"
+          },
+          "segment_time_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Segment Time S",
+            "type": "number"
+          },
+          "unknown_surface_time_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Unknown Surface Time S",
+            "type": "number"
+          },
+          "unknown_width_time_s": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Unknown Width Time S",
+            "type": "number"
+          }
+        },
+        "title": "RoadCoverage",
+        "type": "object"
+      },
       "RouteRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1125,6 +1385,9 @@
             "title": "Rejection Reasons",
             "type": "array"
           },
+          "road_coverage": {
+            "$ref": "#/components/schemas/RoadCoverage"
+          },
           "segments": {
             "items": {
               "$ref": "#/components/schemas/ScoredSegment"
@@ -1249,6 +1512,72 @@
         "title": "SolverOptions",
         "type": "object"
       },
+      "TravelLeg": {
+        "additionalProperties": false,
+        "properties": {
+          "cost": {
+            "$ref": "#/components/schemas/Cost"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/Geometry"
+          },
+          "road_coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoadCoverage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "geometry",
+          "cost"
+        ],
+        "title": "TravelLeg",
+        "type": "object"
+      },
+      "VehicleProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "height_m": {
+            "exclusiveMinimum": 0.0,
+            "title": "Height M",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "weight_t": {
+            "exclusiveMinimum": 0.0,
+            "title": "Weight T",
+            "type": "number"
+          },
+          "width_m": {
+            "exclusiveMinimum": 0.0,
+            "title": "Width M",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "width_m",
+          "height_m",
+          "weight_t"
+        ],
+        "title": "VehicleProfile",
+        "type": "object"
+      },
       "Weights": {
         "additionalProperties": false,
         "properties": {
@@ -1274,6 +1603,12 @@
             "default": 1,
             "minimum": 0.0,
             "title": "Time",
+            "type": "number"
+          },
+          "uncertainty": {
+            "default": 1,
+            "minimum": 0.0,
+            "title": "Uncertainty",
             "type": "number"
           }
         },
@@ -1302,6 +1637,12 @@
             "title": "Capabilities",
             "type": "array"
           },
+          "height_m": {
+            "default": 2.8,
+            "exclusiveMinimum": 0.0,
+            "title": "Height M",
+            "type": "number"
+          },
           "id": {
             "maxLength": 40,
             "minLength": 1,
@@ -1326,6 +1667,27 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "vehicle_type": {
+            "default": "traveller",
+            "enum": [
+              "traveller",
+              "omini"
+            ],
+            "title": "Vehicle Type",
+            "type": "string"
+          },
+          "weight_t": {
+            "default": 3.5,
+            "exclusiveMinimum": 0.0,
+            "title": "Weight T",
+            "type": "number"
+          },
+          "width_m": {
+            "default": 2.4,
+            "exclusiveMinimum": 0.0,
+            "title": "Width M",
+            "type": "number"
           }
         },
         "required": [
@@ -1480,6 +1842,35 @@
         "summary": "Allocation Optimize"
       }
     },
+    "/api/allocation/vehicle-profiles": {
+      "get": {
+        "description": "Editable demo presets shared with the frontend; not certified fleet measurements.",
+        "operationId": "allocation_vehicle_profiles_api_allocation_vehicle_profiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/VehicleProfile"
+                  },
+                  "propertyNames": {
+                    "enum": [
+                      "traveller",
+                      "omini"
+                    ]
+                  },
+                  "title": "Response Allocation Vehicle Profiles Api Allocation Vehicle Profiles Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Allocation Vehicle Profiles"
+      }
+    },
     "/api/emergency/block-road": {
       "post": {
         "operationId": "block_road_api_emergency_block_road_post",
@@ -1623,6 +2014,102 @@
           }
         },
         "summary": "Simulate Traffic"
+      }
+    },
+    "/api/hospitals": {
+      "get": {
+        "operationId": "hospitals_in_view_api_hospitals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "south",
+            "required": true,
+            "schema": {
+              "maximum": 90,
+              "minimum": -90,
+              "title": "South",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "west",
+            "required": true,
+            "schema": {
+              "maximum": 180,
+              "minimum": -180,
+              "title": "West",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "north",
+            "required": true,
+            "schema": {
+              "maximum": 90,
+              "minimum": -90,
+              "title": "North",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "east",
+            "required": true,
+            "schema": {
+              "maximum": 180,
+              "minimum": -180,
+              "title": "East",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HospitalSearch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Hospitals In View"
       }
     },
     "/api/map-config": {

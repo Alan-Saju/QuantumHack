@@ -1,3 +1,5 @@
+import { withinArea } from './operating-area.js';
+
 export function buildRequest(origin, destination) {
   for (const point of [origin, destination]) {
     if (point.length !== 2 || !point.every(value => typeof value === 'number' && Number.isFinite(value))
@@ -5,11 +7,14 @@ export function buildRequest(origin, destination) {
       throw new Error('Enter a valid latitude and longitude for both locations.');
     }
   }
+  if (![origin, destination].every(point => withinArea(point[0], point[1]))) {
+    throw new RangeError('Choose locations inside the Kerala operating area.');
+  }
   return {
     ambulance: { latitude: origin[0], longitude: origin[1] },
     emergency: { latitude: destination[0], longitude: destination[1] },
     optimization: { algorithm: 'classical', consider_traffic: false,
-      consider_road_width: false, consider_risk: false },
+      consider_road_width: true, consider_risk: true },
   };
 }
 

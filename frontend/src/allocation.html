@@ -7,6 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/assets/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/assets/allocation.css">
+  <link rel="stylesheet" href="/assets/hospital-picker.css">
   <script defer src="/assets/vendor/leaflet/leaflet.js"></script>
   <script type="module" src="/assets/allocation.js"></script>
 </head>
@@ -25,14 +26,20 @@
     <div class="summary-stat"><strong id="hospital-slot-count">—</strong><div><span>Hospital slots available</span><small id="hospital-network-label">Loading fixed sites</small></div></div>
   </section>
   <main>
-    <aside aria-label="Allocation scenario">
+    <section id="ambulance-trip" aria-labelledby="trip-title" hidden>
+      <div class="trip-navigation"><button id="back-to-dashboard" type="button">← Back to dashboard</button></div>
+      <div id="trip-content"></div>
+    </section>
+    <aside id="scenario-panel" aria-label="Allocation scenario">
       <form id="scenario-form">
-        <div class="scenario-heading"><div><h2>Scenario</h2><p>Configure resources, then allocate.</p></div><span id="scenario-size" class="count-badge">3 + 3</span></div>
+        <div class="scenario-heading"><div><h2>Scenario</h2><p>Configure resources, then allocate.</p></div><div class="scenario-heading-actions"><span id="scenario-size" class="count-badge">3 + 3</span><button id="collapse-scenario" type="button" aria-expanded="true" aria-controls="scenario-panel" aria-label="Collapse Scenario">Collapse <span aria-hidden="true">‹</span></button></div></div>
         <div class="scenario-scroll">
-          <section class="solver-setup" aria-label="Allocation method"><label>Allocation method<select id="algorithm"><option value="qaoa">QAOA + exact comparison</option><option value="exact">Exact classical baseline</option></select></label><label>Travel data<select id="travel-source"><option value="synthetic">Synthetic travel estimates</option><option value="osrm">Local OSRM road routes</option></select></label></section>
+          <section class="solver-setup" aria-label="Allocation method"><p class="control-note">One run calculates QAOA and Classical. Compare their results using the controls on the map.</p><label>Travel data<select id="travel-source"><option value="synthetic">Synthetic travel estimates</option><option value="osrm">Local OSRM road routes</option></select></label></section>
+          <p id="vehicle-mode-note" class="control-note">Choose Local OSRM road routes to apply vehicle dimensions.</p>
+          <details class="resource-group" id="road-settings"><summary>Road checks and costs</summary><div class="group-content"><p class="control-note">Road mode scores narrow roads, surface and missing data. Known access and vehicle-limit violations are excluded.</p><label class="road-toggle"><input id="require-known-width" type="checkbox" disabled>Require mapped road width</label><label class="road-toggle"><input id="consider-traffic" type="checkbox" disabled>Include simulated traffic</label><p id="road-mode-note" class="control-note">Synthetic mode uses geometric estimates and does not apply road checks.</p></div></details>
           <details class="resource-group" open><summary><span class="group-symbol ambulance-symbol" aria-hidden="true">A</span>Ambulances<span class="group-count" id="ambulance-group-count">3</span></summary><div class="group-content" id="ambulances"></div></details>
           <details class="resource-group" open><summary><span class="group-symbol incident-symbol" aria-hidden="true">!</span>Incidents<span class="group-count" id="incident-group-count">3</span></summary><div class="group-content" id="incidents"></div></details>
-          <details class="resource-group" open><summary><span class="group-symbol hospital-symbol" aria-hidden="true">+</span>Hospitals<span class="group-count" id="hospital-group-count">3</span></summary><div class="group-content"><label>Fixed hospital network<select id="hospital-count"><option value="3">3 fixed hospital sites</option><option value="5">5 fixed hospital sites</option></select></label><p class="control-note">Sites stay fixed. Availability and care capabilities determine which incidents they can accept.</p><div id="hospitals"></div></div></details>
+          <details class="resource-group" open><summary><span class="group-symbol hospital-symbol" aria-hidden="true">+</span>Hospitals<span class="group-count" id="hospital-group-count">3</span></summary><div class="group-content"><label>Hospital network<select id="hospital-count"><option value="3">3 hospital slots</option></select></label><label>Hospital slot to replace<select id="hospital-slot"></select></label><button id="choose-hospital" class="choose-hospital" type="button">Choose hospital from map</button><p id="hospital-selection" class="hospital-selection">Default sites are loaded. You can replace each hospital from the map.</p><p class="control-note">Mapped locations do not verify care capabilities or availability. New selections start with the receiving slot off.</p><div id="hospitals"></div></div></details>
           <details class="resource-group advanced-settings" id="advanced-settings"><summary>Solver settings<span class="settings-hint">QAOA</span></summary><div class="group-content"><div class="controls-grid"><label>QAOA layers<input id="reps" type="number" value="1" min="1" max="3" required></label><label>Evaluations<input id="maxiter" type="number" value="30" min="10" max="100" required></label><label>Samples<input id="shots" type="number" value="1024" min="64" max="8192" required></label><label>Seed<input id="seed" type="number" value="42" min="0" max="4294967295" required></label></div><label>Transport time weight<input id="transport-weight" type="number" value="1" min="0" max="10" step="0.1" required></label><p class="control-note">QAOA runs in a local simulator. The exact solver supplies a comparison and fallback.</p></div></details>
           <p class="notice">Synthetic resource data and severity policy. For research demonstration.</p>
         </div>
@@ -40,15 +47,25 @@
       </form>
     </aside>
     <div class="workspace">
-      <div class="map-heading"><div><h2>Dispatch map</h2><p>Position your response resources</p></div><div class="map-actions"><button id="placement-mode" type="button" aria-pressed="true">Placement on</button><button id="fit-resources" type="button" title="Show every resource on the map">Fit resources <span aria-hidden="true">⤢</span></button></div></div>
+      <div class="map-heading"><div><h2>Kerala dispatch map</h2><p>Place resources anywhere in the Kerala operating area</p></div><div class="map-actions"><button id="expand-scenario" type="button" aria-expanded="false" aria-controls="scenario-panel" hidden>Show Scenario</button><button id="placement-mode" type="button" aria-pressed="true">Placement on</button><button id="fit-resources" type="button" title="Show every resource on the map">Fit resources <span aria-hidden="true">⤢</span></button></div></div>
       <div class="placement-controls"><div class="placement-toolbar"><label for="placement-target">Place on map<select id="placement-target"><option value="A1">A1 · Ambulance 1</option><option value="A2">A2 · Ambulance 2</option><option value="A3">A3 · Ambulance 3</option><option value="I1">I1 · Incident 1</option><option value="I2">I2 · Incident 2</option><option value="I3">I3 · Incident 3</option></select></label><div id="resource-shortcuts" class="resource-shortcuts" aria-label="Choose a resource to place"></div></div><p id="placement-status" class="control-note" role="status" aria-live="polite">Select a resource, then click the map. Hospital sites remain fixed.</p></div>
+      <section id="fleet-snapshot" class="fleet-snapshot" aria-label="Ambulance allocation snapshot" hidden></section>
       <section class="map-section" aria-label="Resource map">
         <div id="map" tabindex="0" aria-label="Ambulances and incidents can be placed on the map. Coordinate inputs provide a keyboard alternative. Hospital sites are fixed."></div>
+        <div id="solver-switch" class="map-solver-switch" role="group" aria-label="Allocation solver view" hidden><span>View result</span><button id="view-classical" type="button" aria-pressed="false" aria-controls="map assignments metrics fleet-snapshot trip-content model-details">Classical</button><button id="view-qaoa" type="button" aria-pressed="false" aria-controls="map assignments metrics fleet-snapshot trip-content model-details">QAOA</button></div>
         <p id="map-note" class="map-data-badge">Synthetic travel · straight-line estimates</p><p id="tile-status" class="tile-status" role="status" hidden></p>
         <div class="map-legend" aria-label="Map legend"><span><i class="legend-dot ambulance-dot"></i>Ambulance</span><span><i class="legend-dot incident-dot"></i>Incident</span><span><i class="legend-dot hospital-dot"></i>Hospital</span></div>
+        <div id="trip-map-legend" class="map-legend trip-map-legend" aria-label="Journey legs" hidden><span><i class="trip-line response-line"></i>Ambulance → Incident</span><span><i class="trip-line transport-line"></i>Incident → Hospital</span></div>
       </section>
-      <section class="results" aria-labelledby="result-heading" aria-busy="false"><details id="allocation-panel" open><summary class="result-heading"><span class="result-title"><span class="decision-symbol" aria-hidden="true">↳</span><span id="result-heading">Allocation decision</span></span><span id="source-label" class="solver-badge">Awaiting optimization</span></summary><div class="result-body"><p id="status" role="status" aria-live="polite">Loading the response scenario…</p><div id="result-empty" class="result-empty"><strong>Your dispatch plan will appear here</strong><p>Place the ambulances and incidents, check availability, then optimize to compare the allocation results.</p></div><div id="metrics"></div><div id="assignments"></div><details id="model-details" hidden><summary>QUBO model &amp; solver evidence</summary><p id="model-summary"></p><pre id="model-data"></pre></details></div></details></section>
+      <section class="results" aria-labelledby="result-heading" aria-busy="false"><details id="allocation-panel" open><summary class="result-heading"><span class="result-title"><span class="decision-symbol" aria-hidden="true">↳</span><span id="result-heading">Allocation decision</span></span><span id="source-label" class="solver-badge">Awaiting optimization</span></summary><div class="result-body"><p id="status" role="status" aria-live="polite">Loading the response scenario…</p><div id="result-empty" class="result-empty"><strong>Your dispatch plan will appear here</strong><p>Place the ambulances and incidents, check availability, then optimize to compare the allocation results.</p></div><p id="solver-note" class="control-note" role="status" hidden></p><div id="metrics"></div><div id="assignments"></div><details id="model-details" hidden><summary>QUBO model &amp; solver evidence</summary><p id="model-summary"></p><pre id="model-data"></pre></details></div></details></section>
     </div>
   </main>
+  <section id="hospital-picker" class="hospital-picker" aria-labelledby="hospital-picker-title" hidden>
+    <div class="hospital-picker-heading"><h2 id="hospital-picker-title">Choose a hospital</h2><button type="button" class="hospital-close" aria-label="Close hospital picker">×</button></div>
+    <button type="button" class="hospital-search">Search this view</button>
+    <p class="hospital-search-status" role="status" aria-live="polite"></p>
+    <div class="hospital-results"></div>
+    <p class="hospital-catalogue-note">OpenStreetMap local extract. Check the entrance; care capabilities and receiving availability are not verified.</p>
+  </section>
 </body>
 </html>

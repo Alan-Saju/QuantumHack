@@ -9,6 +9,7 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/assets/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="stylesheet" href="/assets/hospital-picker.css">
   <script defer src="/assets/vendor/leaflet/leaflet.js"></script>
   <script type="module" src="/assets/app.js"></script>
 </head>
@@ -16,12 +17,12 @@
   <a class="skip-link" href="#route-form">Skip to route controls</a>
   <main class="workspace">
     <aside class="sidebar" aria-label="Route planner">
-      <div class="planner-heading"><div><span class="app-name">QuantumRescue</span><h1>Where are you heading?</h1></div><button id="toggle-planner" class="icon-button" type="button" aria-label="Hide planner" aria-expanded="true" aria-controls="planner-content">−</button></div>
+      <div class="planner-heading"><div><span class="app-name">QuantumRescue</span><h1>Single ambulance route</h1></div><button id="toggle-planner" class="icon-button" type="button" aria-label="Hide planner" aria-expanded="true" aria-controls="planner-content">−</button></div>
       <div id="planner-content">
       <p><a href="/assets/allocation.html">Open resource allocation →</a></p>
       <form id="route-form">
         <fieldset class="location-fieldset">
-          <legend><span class="point-label origin-label">A</span> Starting point</legend>
+          <legend><span class="point-label origin-label">A</span> Ambulance location</legend>
           <div class="coordinate-grid">
             <label for="origin-lat">Latitude<input id="origin-lat" type="number" min="-90" max="90" step="any" required value="9.9312" inputmode="decimal"></label>
             <label for="origin-lon">Longitude<input id="origin-lon" type="number" min="-180" max="180" step="any" required value="76.2673" inputmode="decimal"></label>
@@ -30,21 +31,33 @@
           <button type="button" class="location-button" id="use-location" aria-describedby="location-status" disabled>Use my location</button>
           <p id="location-status" class="location-status" role="status" aria-live="polite">Use your device location for point A, or enter coordinates.</p>
         </fieldset>
-        <div class="swap-row"><span></span><button type="button" id="swap" class="text-button">Swap locations <span aria-hidden="true">↕</span></button></div>
+        <div class="swap-row"><span></span><button type="button" id="swap" class="text-button">Swap start and hospital <span aria-hidden="true">↕</span></button></div>
+        <fieldset class="location-fieldset incident-fieldset">
+          <legend><span class="point-label incident-label">B</span> Incident location</legend>
+          <div class="coordinate-grid">
+            <label for="incident-lat">Latitude<input id="incident-lat" type="number" min="-90" max="90" step="any" required value="9.9405" inputmode="decimal"></label>
+            <label for="incident-lon">Longitude<input id="incident-lon" type="number" min="-180" max="180" step="any" required value="76.2808" inputmode="decimal"></label>
+          </div>
+          <button type="button" class="pick-button" id="pick-incident" aria-pressed="false">Set B on map</button>
+        </fieldset>
         <fieldset class="location-fieldset">
-          <legend><span class="point-label destination-label">B</span> Destination</legend>
+          <legend><span class="point-label destination-label">C</span> Hospital location</legend>
           <div class="coordinate-grid">
             <label for="destination-lat">Latitude<input id="destination-lat" type="number" min="-90" max="90" step="any" required value="9.949162" inputmode="decimal"></label>
             <label for="destination-lon">Longitude<input id="destination-lon" type="number" min="-180" max="180" step="any" required value="76.291069" inputmode="decimal"></label>
           </div>
-          <button type="button" class="pick-button" id="pick-destination" aria-pressed="false">Set B on map</button>
+          <button type="button" class="pick-button" id="pick-destination" aria-pressed="false">Set C on map</button>
+          <button type="button" class="choose-hospital" id="choose-hospital">Choose hospital from map</button>
+          <p id="hospital-selection" class="hospital-selection">Custom hospital location</p>
         </fieldset>
         <button type="submit" class="primary-button" id="find-route">Find routes <span aria-hidden="true">→</span></button>
       </form>
       <section class="route-results" aria-labelledby="results-heading" aria-busy="false">
         <div class="section-heading"><h2 id="results-heading">Route options</h2><span id="route-count"></span></div>
-        <p id="route-status" class="route-status" role="status" aria-live="polite">Choose points on the map or use your location.</p>
-        <div id="route-options"></div>
+        <p id="route-status" class="route-status" role="status" aria-live="polite">Set the ambulance, incident and hospital locations.</p>
+        <p class="trip-estimate-note">Total driving time includes both legs. On-scene care and hospital handover are excluded.</p>
+        <p id="timing-source" class="timing-source" hidden></p>
+        <div id="route-options" role="group" aria-label="Suggested routes"></div>
         <div id="route-details" hidden></div>
       </section>
       <details class="app-footer"><summary>Connection &amp; about</summary><div class="connection"><span id="connection-dot" class="connection-dot" aria-hidden="true"></span><span id="connection-status" role="status">Checking local OSRM…</span><button type="button" id="check-connection" class="text-button">Check again</button></div><p>Research prototype. Route checks do not establish emergency suitability. Traffic simulation is off.</p></details>
@@ -55,6 +68,13 @@
       <div class="map-topbar"><button id="fit-map" class="map-button" type="button" title="Show all route points">Fit route <span aria-hidden="true">⤢</span></button></div>
       <p id="map-instruction" class="map-instruction">Click the map to place A · ambulance location</p>
       <p id="tile-status" class="tile-status" role="status" hidden></p>
+      <section id="hospital-picker" class="hospital-picker" aria-labelledby="hospital-picker-title" hidden>
+        <div class="hospital-picker-heading"><h2 id="hospital-picker-title">Choose a hospital</h2><button type="button" class="hospital-close" aria-label="Close hospital picker">×</button></div>
+        <button type="button" class="hospital-search">Search this view</button>
+        <p class="hospital-search-status" role="status" aria-live="polite"></p>
+        <div class="hospital-results"></div>
+        <p class="hospital-catalogue-note">OpenStreetMap local extract. Check the entrance; care capabilities and receiving availability are not verified.</p>
+      </section>
     </section>
   </main>
 </body>

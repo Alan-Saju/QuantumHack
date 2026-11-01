@@ -7,6 +7,7 @@ from backend.allocation.qubo import Choice, valid_bits
 
 class QuantumResult(Model):
     status: str
+    plan_valid: bool = False
     message: str = ''
     assignments: list[Choice] | None = None
     objective: float | None = None

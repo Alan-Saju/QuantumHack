@@ -31,4 +31,24 @@ the same pull request. Discuss breaking changes before implementation.
 `tests/test_contracts.py` validates fixture models, replays fixtures through
 the real FastAPI handlers with an injected OSRM provider, and checks for
 schema drift. These checks need no live OSRM service. Browser tests consume
-these same fixtures. Frontend-only mock-server mode is a later task.
+these same fixtures. The frontend runner also serves their exact status and
+response bodies in explicit mock mode:
+
+```powershell
+npm.cmd --prefix frontend ci --ignore-scripts
+npm.cmd --prefix frontend run dev:mock
+```
+
+Open `http://127.0.0.1:5173/`. Set `MOCK_SCENARIO` to `success` (default),
+`no-route`, `rejected`, or `service-failure` before starting the runner.
+It serves fixed example geometry regardless of the submitted coordinates;
+it is a UI development tool, not a routing simulator or request validator.
+Only the route endpoint, map configuration and explicitly synthetic readiness
+are mocked. Unknown endpoints return 404; incorrect route methods return 405.
+The persistent banner and route status identify synthetic results.
+
+`npm.cmd --prefix frontend run dev` instead forwards `/api/` to
+`BACKEND_TARGET` (default `http://127.0.0.1:8000`). Live forwarding preserves
+backend response statuses and bodies. A connection failure returns 503 with
+`error.code: BACKEND_UNAVAILABLE`, a runner error rather than a FastAPI response.
+Live mode never substitutes fixtures. Both modes bind only to `127.0.0.1`.

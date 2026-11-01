@@ -2,6 +2,7 @@ import { buildRequest, formatDistance, formatDuration, routeError } from './rout
 import { createMap } from './map-view.js';
 
 const $ = selector => document.querySelector(selector);
+const synthetic = document.body.dataset.mode === 'mock';
 const form = $('#route-form');
 const fields = [...form.querySelectorAll('input')];
 let mapView;
@@ -95,7 +96,7 @@ function showResults(result) {
   mapView.show(candidates, selectedId);
   selectRoute(selectedId);
   status(result.status === 'success'
-    ? 'Routes loaded from local OSRM. Travel times exclude simulated traffic.'
+    ? (synthetic ? 'Synthetic example routes loaded. These fixed routes do not follow the selected locations.' : 'Routes loaded from local OSRM. Travel times exclude simulated traffic.')
     : 'All candidates failed the known road checks. Dashed routes are shown for inspection only.',
   result.status === 'success' ? 'ready' : 'error');
 }
@@ -111,7 +112,7 @@ async function findRoutes() {
   const controller = new AbortController();
   activeRequest = controller;
   const timer = setTimeout(() => controller.abort(), 20000);
-  status('Finding road routes from local OSRM…', 'loading');
+  status(synthetic ? 'Loading synthetic example routes…' : 'Finding road routes from local OSRM…', 'loading');
   busy(true);
   try {
     const response = await fetch('/api/emergency/route', {
@@ -120,6 +121,9 @@ async function findRoutes() {
     });
     if (!response.ok) {
       const failure = await response.json().catch(() => null);
+      if (failure?.error?.code === 'BACKEND_UNAVAILABLE') {
+        throw new Error('Cannot reach the backend. Start it and check BACKEND_TARGET, then try again.');
+      }
       throw new Error(failure?.error?.code === 'ROAD_INDEX_UNAVAILABLE'
         ? 'Road attributes could not be loaded. Rebuild the road index and restart the app.'
         : routeError(response.status));
@@ -155,6 +159,11 @@ function movePoint(prefix, coordinates) {
 
 let readinessPending = false;
 async function checkConnection() {
+  if (synthetic) {
+    $('#connection-status').textContent = 'Synthetic demo data · no routing service connected';
+    $('#check-connection').disabled = true;
+    return;
+  }
   if (readinessPending) return;
   readinessPending = true;
   $('#check-connection').disabled = true;

@@ -4,7 +4,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 
 const url = process.env.APP_URL ?? 'http://127.0.0.1:8000';
-const browser = await chromium.launch({ channel: 'msedge', headless: true });
+const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL ?? (process.platform === 'win32' ? 'msedge' : undefined), headless: true });
 const output = new URL('../test-results/', import.meta.url);
 await mkdir(output, { recursive: true });
 let mode = 'success';
@@ -46,6 +46,10 @@ try {
     await route.fulfill({ json: result(lastBody) });
   });
   await page.goto(url);
+  for (const asset of ['/assets/app.js', '/assets/vendor/leaflet/leaflet.js', '/assets/styles.css']) {
+    const response = await page.request.get(url + asset);
+    assert.equal(response.status(), 200, `Built asset ${asset}`);
+  }
   await page.getByText('OSRM connected · road attributes loaded').waitFor();
   assert.equal(await page.locator('.leaflet-marker-icon').count(), 2);
   await page.getByRole('button', { name: 'Find routes' }).click();

@@ -1,0 +1,17 @@
+{
+  "name": "quantum-rescue-map",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev-server.mjs",
+    "dev:mock": "node dev-server.mjs --mock",
+    "build": "node build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "test:integration": "node tests/integration.mjs"
+  },
+  "dependencies": {"leaflet": "1.9.4"},
+  "devDependencies": {"playwright-core": "1.56.1"},
+  "engines": {"node": ">=22"}
+}

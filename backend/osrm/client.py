@@ -8,6 +8,10 @@ class OSRMError(Exception):
     """An unavailable or invalid routing upstream."""
 
 
+class OSRMNoSegmentError(OSRMError):
+    """A requested location cannot be snapped within the allowed radius."""
+
+
 class OSRMClient:
     def __init__(self, client: httpx.Client, base_url: str = "http://127.0.0.1:5000"):
         self.client = client
@@ -18,6 +22,8 @@ class OSRMClient:
         try:
             response = self.client.get(f"{self.base_url}/{service}/v1/driving/{coordinates}", params=params)
             payload = response.json()
+            if service == "route" and response.status_code == 400 and isinstance(payload, dict) and payload.get("code") == "NoSegment":
+                raise OSRMNoSegmentError("No routable road within 100 m of an endpoint. Move the points closer to a road within the map extract.")
             if service == "route" and response.status_code in {200, 400} and isinstance(payload, dict) and payload.get("code") == "NoRoute":
                 return payload
             response.raise_for_status()

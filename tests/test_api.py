@@ -2,9 +2,9 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.main import app, get_osrm, get_roads
+from backend.main import app, create_app, get_osrm, get_roads
 from backend.models.route import Location
-from backend.osrm.client import OSRMClient, OSRMError
+from backend.osrm.client import OSRMClient, OSRMError, OSRMNoSegmentError
 from test_routing import index, payload, request
 
 
@@ -71,9 +71,80 @@ def test_no_route_is_normal_result(status, data):
         assert OSRMClient(http).routes(point, point) == []
 
 
+def test_no_segment_is_a_location_error(api):
+    point = Location(latitude=9.93, longitude=76.26)
+    with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(400, json={
+        'code': 'NoSegment', 'message': 'Could not find a matching segment for coordinate 1'
+    }))) as http:
+        client = OSRMClient(http)
+        with pytest.raises(OSRMNoSegmentError):
+            client.routes(point, point)
+        app.dependency_overrides[get_osrm] = lambda: client
+        response = api.post('/api/emergency/route', json=request().model_dump())
+        assert response.status_code == 422
+        assert response.json()['error']['code'] == 'LOCATION_NOT_ROUTABLE'
+        assert '100' in response.json()['error']['message']
+
+
 @pytest.mark.parametrize("data", [{"code": "Ok"}, {"code": "Ok", "routes": [{}]}, []])
 def test_invalid_upstream_data(data):
     point = Location(latitude=9.93, longitude=76.26)
     with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200, json=data))) as http:
         with pytest.raises(OSRMError):
             OSRMClient(http).routes(point, point)
+
+
+def test_map_config_and_frontend_assets(tmp_path):
+    (tmp_path / 'index.html').write_text('<main id="map">Test map</main>')
+    (tmp_path / 'app.js').write_text('// test asset')
+    vendor = tmp_path / 'vendor/leaflet'
+    vendor.mkdir(parents=True)
+    (vendor / 'leaflet.js').write_text('// test vendor')
+    with TestClient(create_app(frontend_dist=tmp_path)) as client:
+        config = client.get('/api/map-config')
+        assert config.status_code == 200
+        assert config.json()['tile_url'].startswith('https://tile.openstreetmap.org/')
+        home = client.get('/')
+        assert home.status_code == 200
+        assert 'id="map"' in home.text
+        assert client.get('/assets/app.js').text == '// test asset'
+        assert client.get('/assets/vendor/leaflet/leaflet.js').status_code == 200
+        assert client.get('/assets/missing.js').status_code == 404
+        assert client.get('/api/emergency/route').status_code == 405
+
+
+def test_readiness_is_not_process_health(api):
+    class Probe:
+        def nearest(self, point):
+            return {"code": "Ok", "waypoints": [{"location": [76.2673, 9.9312]}]}
+    app.dependency_overrides[get_osrm] = Probe
+    result = api.get('/api/readiness')
+    assert result.status_code == 200
+    assert result.json()['osrm'] == 'available'
+    class Missing:
+        def nearest(self, point):
+            raise OSRMError('missing')
+    app.dependency_overrides[get_osrm] = Missing
+    assert api.get('/api/readiness').json()['osrm'] == 'unavailable'
+
+
+def test_readiness_rejects_malformed_probe(api):
+    class Probe:
+        def nearest(self, point):
+            return {"code": "Ok", "waypoints": []}
+    app.dependency_overrides[get_osrm] = Probe
+    assert api.get('/api/readiness').json()['osrm'] == 'unavailable'
+
+
+def test_unbuilt_frontend_has_setup_instructions(tmp_path):
+    with TestClient(create_app(frontend_dist=tmp_path / 'unbuilt')) as client:
+        response = client.get('/')
+    assert response.status_code == 503
+    assert 'Build the map frontend' in response.text
+
+
+def test_invalid_tile_configuration_is_rejected(api, monkeypatch):
+    monkeypatch.setenv('MAP_TILE_URL', 'javascript:alert(1)')
+    response = api.get('/api/map-config')
+    assert response.status_code == 503
+    assert response.json()['error']['code'] == 'MAP_CONFIG_INVALID'

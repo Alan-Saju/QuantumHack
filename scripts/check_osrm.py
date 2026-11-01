@@ -13,7 +13,8 @@ def main():
     parser.add_argument("--url", default="http://127.0.0.1:5000")
     args = parser.parse_args()
     start = Location(latitude=9.9312, longitude=76.2673)
-    end = Location(latitude=9.95, longitude=76.29)
+    # Verified on the local Southern Zone graph; the previous point was 149 m from a road.
+    end = Location(latitude=9.949162, longitude=76.291069)
     with httpx.Client(timeout=30, trust_env=False) as http:
         client = OSRMClient(http, args.url)
         nearest = client.nearest(start)

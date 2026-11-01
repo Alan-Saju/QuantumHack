@@ -76,6 +76,14 @@ For later runs, use `.\scripts\start.ps1`; it picks up the generated index autom
 
 ### Basemap and connectivity
 
+The map fills the window. Route controls sit in a floating panel (a bottom
+panel on phones); use its minus/plus button to hide or show the controls.
+Click the map to place the selected point, or click an existing marker to
+zoom into that location. Coordinate changes and device location also focus
+the selected area. **Fit route** restores the complete overview, keeping
+route points clear of the panel. Connection details and prototype information
+are available under **Connection & about**.
+
 Use **Use my location** below the starting coordinates to fill point A from
 your device. Approve the browser's location prompt; the marker moves and an
 existing route recalculates. The displayed accuracy is approximate, especially
